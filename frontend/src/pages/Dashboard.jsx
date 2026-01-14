@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../config';
 
 const StatCard = ({ title, value, trend, icon, to }) => (
     <Link to={to || "#"} className="card" style={{ textDecoration: 'none', display: 'block', color: 'inherit', cursor: to ? 'pointer' : 'default' }}>
@@ -38,8 +39,8 @@ const CommunityInfo = () => {
     const [board, setBoard] = React.useState([]);
 
     React.useEffect(() => {
-        fetch('http://127.0.0.1:8000/api/community-info/info').then(res => res.json()).then(setInfo).catch(console.error);
-        fetch('http://127.0.0.1:8000/api/community-info/board').then(res => res.json()).then(setBoard).catch(console.error);
+        fetch(`${API_URL}/api/community-info/info`).then(res => res.json()).then(setInfo).catch(console.error);
+        fetch(`${API_URL}/api/community-info/board`).then(res => res.json()).then(setBoard).catch(console.error);
     }, []);
 
     if (!info) return null;
@@ -110,7 +111,7 @@ export default function Dashboard() {
     const [community, setCommunity] = React.useState(null);
 
     React.useEffect(() => {
-        fetch('http://127.0.0.1:8000/api/community-info/info')
+        fetch(`${API_URL}/api/community-info/info`)
             .then(res => res.json())
             .then(setCommunity)
             .catch(console.error);

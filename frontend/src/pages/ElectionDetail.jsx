@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../config';
 
 export default function ElectionDetail() {
     const { id } = useParams();
@@ -15,7 +16,7 @@ export default function ElectionDetail() {
 
     useEffect(() => {
         // Fetch all elections to find this one
-        fetch('http://127.0.0.1:8000/api/voting/')
+        fetch(`${API_URL}/api/voting/`)
             .then(res => res.json())
             .then(data => {
                 const found = data.find(e => e.id === parseInt(id));
@@ -37,7 +38,7 @@ export default function ElectionDetail() {
     }, [id]);
 
     const fetchResults = () => {
-        fetch(`http://127.0.0.1:8000/api/voting/${id}/results`)
+        fetch(`${API_URL}/api/voting/${id}/results`)
             .then(res => res.json())
             .then(data => setResults(data))
             .catch(console.error);
@@ -69,7 +70,7 @@ export default function ElectionDetail() {
         if (selectedCandidates.length === 0) return;
 
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/voting/vote', {
+            const res = await fetch(`${API_URL}/api/voting/vote`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -97,7 +98,7 @@ export default function ElectionDetail() {
         if (!window.confirm("Are you sure you want to end this election immediately?")) return;
 
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/voting/${id}/end`, {
+            const res = await fetch(`${API_URL}/api/voting/${id}/end`, {
                 method: 'POST'
             });
 

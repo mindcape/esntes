@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../config';
 
 export default function Documents() {
     const { user } = useAuth();
@@ -24,7 +25,7 @@ export default function Documents() {
 
     const fetchDocuments = () => {
         const role = user?.role || 'resident';
-        fetch(`http://127.0.0.1:8000/api/documents?user_role=${role}`)
+        fetch(`${API_URL}/api/documents?user_role=${role}`)
             .then(res => res.json())
             .then(data => {
                 setDocuments(data);
@@ -50,7 +51,7 @@ export default function Documents() {
         }
 
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/documents/', {
+            const res = await fetch(`${API_URL}/api/documents/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
@@ -80,7 +81,7 @@ export default function Documents() {
         if (!confirm('Are you sure you want to delete this document?')) return;
 
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/documents/${docId}`, {
+            const res = await fetch(`${API_URL}/api/documents/${docId}`, {
                 method: 'DELETE'
             });
 

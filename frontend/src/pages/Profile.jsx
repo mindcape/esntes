@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../config';
 
 export default function Profile() {
     const { user } = useAuth();
@@ -8,7 +9,7 @@ export default function Profile() {
     const [message, setMessage] = useState('');
 
     useEffect(() => {
-        fetch('http://127.0.0.1:8000/api/user/profile')
+        fetch(`${API_URL}/api/user/profile`)
             .then(res => res.json())
             .then(data => {
                 setProfile(data);
@@ -78,7 +79,7 @@ export default function Profile() {
         }
 
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/user/profile', {
+            const res = await fetch(`${API_URL}/api/user/profile`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

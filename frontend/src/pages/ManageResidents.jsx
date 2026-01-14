@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 
 export default function ManageResidents() {
     const [residents, setResidents] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('http://127.0.0.1:8000/api/community/all-residents')
+        fetch(`${API_URL}/api/community/all-residents`)
             .then(res => res.json())
             .then(data => {
                 setResidents(data);

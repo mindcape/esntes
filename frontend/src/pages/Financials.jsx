@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 
 export default function Financials() {
     const [delinquencies, setDelinquencies] = useState([]);
@@ -10,9 +11,9 @@ export default function Financials() {
 
     useEffect(() => {
         Promise.all([
-            fetch('http://127.0.0.1:8000/api/finance/delinquencies').then(r => r.json()),
-            fetch('http://127.0.0.1:8000/api/finance/reports/balance-sheet').then(r => r.json()),
-            fetch('http://127.0.0.1:8000/api/finance/reports/income-statement').then(r => r.json())
+            fetch(`${API_URL}/api/finance/delinquencies`).then(r => r.json()),
+            fetch(`${API_URL}/api/finance/reports/balance-sheet`).then(r => r.json()),
+            fetch(`${API_URL}/api/finance/reports/income-statement`).then(r => r.json())
         ]).then(([delinqData, bsData, isData]) => {
             setDelinquencies(delinqData);
             setBalanceSheet(bsData);
@@ -25,7 +26,7 @@ export default function Financials() {
     }, []);
 
     const fetchDelinquencies = () => {
-        fetch('http://127.0.0.1:8000/api/finance/delinquencies')
+        fetch(`${API_URL}/api/finance/delinquencies`)
             .then(res => res.json())
             .then(setDelinquencies)
             .catch(console.error);
@@ -34,7 +35,7 @@ export default function Financials() {
     const runAssessments = async () => {
         setMessage('');
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/finance/assessments/generate', { method: 'POST' });
+            const res = await fetch(`${API_URL}/api/finance/assessments/generate`, { method: 'POST' });
             const data = await res.json();
             if (res.ok) {
                 setMessage(`Success: ${data.message}`);
@@ -50,7 +51,7 @@ export default function Financials() {
     const runLateFees = async () => {
         setMessage('');
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/finance/assessments/late-fees', { method: 'POST' });
+            const res = await fetch(`${API_URL}/api/finance/assessments/late-fees`, { method: 'POST' });
             const data = await res.json();
             if (res.ok) {
                 setMessage(`Success: ${data.message}`);

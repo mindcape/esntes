@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 
 export default function BoardARC() {
     const [requests, setRequests] = useState([]);
@@ -10,7 +11,7 @@ export default function BoardARC() {
     }, []);
 
     const fetchRequests = () => {
-        fetch('http://127.0.0.1:8000/api/property/arc/all')
+        fetch(`${API_URL}/api/property/arc/all`)
             .then(res => res.json())
             .then(data => {
                 setRequests(data);
@@ -24,7 +25,7 @@ export default function BoardARC() {
 
     const updateStatus = async (requestId, newStatus) => {
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/property/arc/${requestId}/status?status=${newStatus}`, {
+            const res = await fetch(`${API_URL}/api/property/arc/${requestId}/status?status=${newStatus}`, {
                 method: 'PUT'
             });
             if (res.ok) {

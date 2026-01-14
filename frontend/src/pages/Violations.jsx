@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 
 export default function Violations() {
     const [violations, setViolations] = useState([]);
@@ -9,7 +10,7 @@ export default function Violations() {
     }, []);
 
     const fetchViolations = () => {
-        fetch('http://127.0.0.1:8000/api/violations/my')
+        fetch(`${API_URL}/api/violations/my`)
             .then(res => res.json())
             .then(data => {
                 setViolations(data);
@@ -25,7 +26,7 @@ export default function Violations() {
         if (!confirm(`Pay fine of $${amount.toFixed(2)}?`)) return;
 
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/violations/${violationId}/pay`, {
+            const res = await fetch(`${API_URL}/api/violations/${violationId}/pay`, {
                 method: 'POST'
             });
             if (res.ok) {

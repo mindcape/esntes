@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 
 export default function ARCRequests() {
     const [requests, setRequests] = useState([]);
@@ -18,7 +19,7 @@ export default function ARCRequests() {
     }, []);
 
     const fetchRequests = () => {
-        fetch('http://127.0.0.1:8000/api/property/arc/my')
+        fetch(`${API_URL}/api/property/arc/my`)
             .then(res => res.json())
             .then(data => {
                 setRequests(data);
@@ -55,7 +56,7 @@ export default function ARCRequests() {
         }
 
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/property/arc', {
+            const res = await fetch(`${API_URL}/api/property/arc`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

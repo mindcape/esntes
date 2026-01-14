@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 
 export default function BoardViolations() {
     const [violations, setViolations] = useState([]);
@@ -28,7 +29,7 @@ export default function BoardViolations() {
     }, []);
 
     const fetchViolations = () => {
-        fetch('http://127.0.0.1:8000/api/violations/all')
+        fetch(`${API_URL}/api/violations/all`)
             .then(res => res.json())
             .then(data => {
                 setViolations(data);
@@ -55,7 +56,7 @@ export default function BoardViolations() {
         }
 
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/violations/', {
+            const res = await fetch(`${API_URL}/api/violations/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -112,7 +113,7 @@ export default function BoardViolations() {
             }
 
             // Build query params
-            let url = `http://127.0.0.1:8000/api/violations/${editModal.id}/status?status=${editData.status}`;
+            let url = `${API_URL}/api/violations/${editModal.id}/status?status=${editData.status}`;
             if (editData.status === 'Fined' && editData.fine_amount) {
                 url += `&fine_amount=${editData.fine_amount}`;
             }

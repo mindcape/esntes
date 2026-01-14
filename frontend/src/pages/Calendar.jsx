@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../config';
 
 export default function Calendar() {
     const { user } = useAuth();
@@ -21,7 +22,7 @@ export default function Calendar() {
     }, []);
 
     const fetchEvents = () => {
-        fetch('http://127.0.0.1:8000/api/calendar/events')
+        fetch(`${API_URL}/api/calendar/events`)
             .then(res => res.json())
             .then(data => {
                 setEvents(data);
@@ -55,8 +56,8 @@ export default function Calendar() {
 
         try {
             const url = selectedEvent
-                ? `http://127.0.0.1:8000/api/calendar/events/${selectedEvent.id}`
-                : 'http://127.0.0.1:8000/api/calendar/events';
+                ? `${API_URL}/api/calendar/events/${selectedEvent.id}`
+                : `${API_URL}/api/calendar/events`;
 
             const res = await fetch(url, {
                 method: selectedEvent ? 'PUT' : 'POST',
@@ -103,7 +104,7 @@ export default function Calendar() {
         if (!confirm('Are you sure you want to delete this event?')) return;
 
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/calendar/events/${eventId}`, {
+            const res = await fetch(`${API_URL}/api/calendar/events/${eventId}`, {
                 method: 'DELETE'
             });
 

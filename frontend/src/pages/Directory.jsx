@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../config';
 
 export default function Directory() {
     const { user } = useAuth();
@@ -9,7 +10,7 @@ export default function Directory() {
     const [optedIn, setOptedIn] = useState(false);
 
     useEffect(() => {
-        fetch('http://127.0.0.1:8000/api/community/directory')
+        fetch(`${API_URL}/api/community/directory`)
             .then(res => res.json())
             .then(data => {
                 setProfiles(data);
@@ -17,7 +18,7 @@ export default function Directory() {
             })
             .catch(console.error);
 
-        fetch('http://127.0.0.1:8000/api/community-info/board')
+        fetch(`${API_URL}/api/community-info/board`)
             .then(res => res.json())
             .then(setBoard)
             .catch(console.error);

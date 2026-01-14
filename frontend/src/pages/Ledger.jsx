@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import PaymentModal from '../components/PaymentModal';
+import { API_URL } from '../config';
 
 export default function Ledger() {
     const [ledger, setLedger] = useState([]);
@@ -8,8 +9,8 @@ export default function Ledger() {
     const [showPayment, setShowPayment] = useState(false);
 
     const fetchData = () => {
-        fetch('http://127.0.0.1:8000/api/finance/ledger').then(res => res.json()).then(setLedger).catch(console.error);
-        fetch('http://127.0.0.1:8000/api/finance/balance').then(res => res.json()).then(setSummary).catch(console.error);
+        fetch(`${API_URL}/api/finance/ledger`).then(res => res.json()).then(setLedger).catch(console.error);
+        fetch(`${API_URL}/api/finance/balance`).then(res => res.json()).then(setSummary).catch(console.error);
     };
 
     useEffect(() => {

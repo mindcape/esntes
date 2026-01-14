@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
+import { API_URL } from '../config';
 
 export default function Elections() {
     const { user } = useAuth();
@@ -8,7 +9,7 @@ export default function Elections() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('http://127.0.0.1:8000/api/voting/', {
+        fetch(`${API_URL}/api/voting/`, {
             // In real app add auth headers
         })
             .then(res => res.json())

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_URL } from '../config';
 
 export default function PaymentModal({ amount, onClose, onSuccess }) {
     const [loading, setLoading] = useState(false);
@@ -11,7 +12,7 @@ export default function PaymentModal({ amount, onClose, onSuccess }) {
         await new Promise(r => setTimeout(r, 1500));
 
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/finance/pay', {
+            const response = await fetch(`${API_URL}/api/finance/pay`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ amount: amount, card_Last4: '4242' })

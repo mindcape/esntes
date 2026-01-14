@@ -1,4 +1,5 @@
 import React from 'react';
+import { API_URL } from '../config';
 
 export const TechSupport = () => (
     <div className="container">
@@ -37,7 +38,7 @@ export const HOASupport = () => {
     const [info, setInfo] = React.useState(null);
 
     React.useEffect(() => {
-        fetch('http://127.0.0.1:8000/api/community-info/info')
+        fetch(`${API_URL}/api/community-info/info`)
             .then(res => res.json())
             .then(setInfo)
             .catch(console.error);

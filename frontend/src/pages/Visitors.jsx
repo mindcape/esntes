@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { API_URL } from '../config';
 
 export default function Visitors() {
     const [visitorName, setVisitorName] = useState('');
@@ -9,7 +10,7 @@ export default function Visitors() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/visitors/', {
+            const response = await fetch(`${API_URL}/api/visitors/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
