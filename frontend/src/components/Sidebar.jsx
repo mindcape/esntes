@@ -97,7 +97,7 @@ export default function Sidebar() {
             <div style={{ flex: 1, overflowY: 'auto', padding: isCollapsed ? '0 0.5rem' : '0 1rem' }}>
                 {user && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        {NAV_ITEMS.map((item) => (
+                        {user.role !== 'super_admin' && NAV_ITEMS.map((item) => (
                             <Link
                                 key={item.path}
                                 to={item.path}
