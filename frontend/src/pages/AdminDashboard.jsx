@@ -45,11 +45,18 @@ export default function AdminDashboard() {
         fetch(`${API_URL}/api/admin/communities`)
             .then(res => res.json())
             .then(data => {
-                setCommunities(data);
-                setLoading(false);
+                if (Array.isArray(data)) {
+                    setCommunities(data);
+                } else {
+                    console.error("API Error:", data);
+                    setCommunities([]); // Fallback
+                }
             })
             .catch(err => {
                 console.error(err);
+                setCommunities([]);
+            })
+            .finally(() => {
                 setLoading(false);
             });
     };
