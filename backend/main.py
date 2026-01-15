@@ -20,6 +20,7 @@ from backend.core.database import engine, Base
 # Import models to ensure they are registered with Base
 from backend.documents import models as document_models
 from backend.voting import models as voting_models
+from backend.community import models as community_models # Register Community
 Base.metadata.create_all(bind=engine)
 
 # CORS Configuration
@@ -50,6 +51,9 @@ app.include_router(property_router.router, prefix="/api/property", tags=["proper
 app.include_router(violations_router.router, prefix="/api/violations", tags=["violations"])
 app.include_router(calendar_router.router, prefix="/api/calendar", tags=["calendar"])
 app.include_router(voting_router.router, prefix="/api/voting", tags=["voting"])
+
+from backend.admin import router as admin_router
+app.include_router(admin_router.router, prefix="/api/admin", tags=["admin"])
 
 @app.get("/health")
 async def health_check_root():
