@@ -63,8 +63,8 @@ function App() {
                 <Route path="/board/arc" element={<PrivateRoute><BoardARC /></PrivateRoute>} />
                 <Route path="/board/violations" element={<PrivateRoute><BoardViolations /></PrivateRoute>} />
 
-                {/* Super Admin Route */}
-                <Route path="/admin" element={<PrivateRoute><AdminDashboard /></PrivateRoute>} />
+                {/* Super Admin Route - Handles its own auth */}
+                <Route path="/admin" element={<AdminDashboard />} />
               </Routes>
             </main>
           </div>

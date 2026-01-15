@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../config';
 
+import { useAuth } from '../contexts/AuthContext';
+
 export default function AdminDashboard() {
+    const { user, login } = useAuth();
     const [communities, setCommunities] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -12,8 +15,30 @@ export default function AdminDashboard() {
     });
 
     useEffect(() => {
-        fetchCommunities();
-    }, []);
+        if (user && user.role === 'super_admin') {
+            fetchCommunities();
+        }
+    }, [user]);
+
+    // Handle Unauthenticated State
+    if (!user || user.role !== 'super_admin') {
+        return (
+            <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
+                <div className="card" style={{ width: '350px', padding: '2rem', textAlign: 'center' }}>
+                    <h1 style={{ marginBottom: '1.5rem', fontSize: '1.5rem' }}>Admin Portal</h1>
+                    {user && <div style={{ color: 'red', marginBottom: '1rem' }}>Access Denied: You are logged in as {user.role}</div>}
+                    <p style={{ color: '#666', marginBottom: '2rem' }}>Please log in with administrative credentials.</p>
+                    <button
+                        onClick={() => login('super_admin')}
+                        className="btn btn-primary"
+                        style={{ width: '100%', padding: '0.75rem', backgroundColor: '#333', borderColor: '#333' }}
+                    >
+                        Login as Super Admin
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const fetchCommunities = () => {
         setLoading(true);

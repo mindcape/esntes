@@ -222,7 +222,6 @@ export default function Sidebar() {
                                 <button onClick={() => login('resident')} className="btn btn-primary" style={{ width: '100%', padding: '0.5rem', backgroundColor: '#0066cc', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', marginBottom: '0.25rem' }}>Login Resident</button>
                                 <button onClick={() => login('board')} className="btn" style={{ border: '1px solid #ddd', width: '100%', padding: '0.5rem', background: 'white', borderRadius: '4px', cursor: 'pointer', marginBottom: '0.25rem' }}>Login Board</button>
                                 <button onClick={() => login('management_company')} className="btn" style={{ border: '1px solid #ddd', width: '100%', padding: '0.5rem', background: 'white', borderRadius: '4px', cursor: 'pointer', marginBottom: '0.25rem', fontSize: '0.75rem' }}>Login Mgmt Co</button>
-                                <button onClick={() => login('super_admin')} className="btn" style={{ border: '1px solid #ddd', width: '100%', padding: '0.5rem', background: '#333', color: 'white', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>Login Super Admin</button>
                             </>
                         ) : (
                             <button onClick={() => login('resident')} style={{ fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Login">🔑</button>
