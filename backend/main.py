@@ -26,6 +26,7 @@ Base.metadata.create_all(bind=engine)
 origins = [
     "http://localhost:5173",  # React Frontend
     "http://localhost:3000",
+    "https://main.d1h71bpojat3kb.amplifyapp.com",  # Production Frontend
 ]
 
 app.add_middleware(
@@ -49,6 +50,10 @@ app.include_router(property_router.router, prefix="/api/property", tags=["proper
 app.include_router(violations_router.router, prefix="/api/violations", tags=["violations"])
 app.include_router(calendar_router.router, prefix="/api/calendar", tags=["calendar"])
 app.include_router(voting_router.router, prefix="/api/voting", tags=["voting"])
+
+@app.get("/health")
+async def health_check_root():
+    return {"status": "ok"}
 
 @app.get("/api/health")
 async def health_check():
