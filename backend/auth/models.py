@@ -14,6 +14,13 @@ class User(Base):
     role_id = Column(Integer, ForeignKey("roles.id"))
     role = relationship("Role", back_populates="users")
 
+    # Profile Fields
+    address = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    bio = Column(String, nullable=True)
+    is_opted_in = Column(Boolean, default=False)
+    preferences = Column(String, nullable=True) # Stored as JSON string
+
 class Role(Base):
     __tablename__ = "roles"
 
