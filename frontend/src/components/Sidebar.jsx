@@ -1,0 +1,224 @@
+import React, { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+
+const NAV_ITEMS = [
+    { path: '/', label: 'Dashboard', icon: '🏠' },
+    { path: '/directory', label: 'Directory', icon: '👥' },
+    { path: '/calendar', label: 'Calendar', icon: '📅' },
+    { path: '/violations', label: 'Violations', icon: '⚠️' },
+    { path: '/visitors', label: 'Visitors', icon: '🚗' },
+    { path: '/arc', label: 'ARC Requests', icon: '🎨' },
+    { path: '/documents', label: 'Documents', icon: '📄' },
+    { path: '/elections', label: 'Elections', icon: '🗳️' },
+];
+
+const BOARD_ITEMS = [
+    { path: '/board/residents', label: 'Manage Residents', icon: '📝' },
+    { path: '/board/financials', label: 'Financial Management', icon: '📊' },
+    { path: '/board/arc', label: 'ARC Approvals', icon: '✅' },
+    { path: '/board/violations', label: 'Violations Management', icon: '👮' },
+];
+
+export default function Sidebar() {
+    const { user, login, logout } = useAuth();
+    const [isCollapsed, setIsCollapsed] = useState(false);
+    const location = useLocation();
+    const [helpOpen, setHelpOpen] = useState(false);
+
+    const isActive = (path) => location.pathname === path;
+
+    // Shared styles
+    const navItemStyle = {
+        padding: '0.75rem 1rem',
+        borderRadius: '0.5rem',
+        color: 'hsl(215 15% 40%)',
+        fontWeight: '500',
+        textDecoration: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.75rem',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        marginBottom: '0.25rem',
+        transition: 'all 0.2s ease',
+    };
+
+    const activeStyle = {
+        ...navItemStyle,
+        backgroundColor: '#e6f0ff',
+        color: '#0066cc',
+    };
+
+    const boardItemStyle = {
+        ...navItemStyle,
+        backgroundColor: '#f8fafc',
+        border: '1px solid #e2e8f0',
+    };
+
+    return (
+        <nav style={{
+            width: isCollapsed ? '80px' : '260px',
+            backgroundColor: 'white',
+            borderRight: '1px solid #eee',
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100vh',
+            position: 'sticky',
+            top: 0,
+            flexShrink: 0,
+            transition: 'width 0.3s ease',
+            zIndex: 100
+        }}>
+            {/* Header */}
+            <div style={{ padding: '1.5rem', display: 'flex', justifyContent: isCollapsed ? 'center' : 'space-between', alignItems: 'center' }}>
+                {!isCollapsed && (
+                    <Link to="/" style={{ fontWeight: 'bold', fontSize: '1.5rem', color: 'hsl(215 25% 27%)', textDecoration: 'none' }}>
+                        ESNTES
+                    </Link>
+                )}
+                <button
+                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '1.2rem',
+                        color: '#888',
+                        padding: '0.25rem'
+                    }}
+                    title={isCollapsed ? "Expand" : "Collapse"}
+                >
+                    {isCollapsed ? '➡' : '⬅'}
+                </button>
+            </div>
+
+            {/* Navigation */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: isCollapsed ? '0 0.5rem' : '0 1rem' }}>
+                {user && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        {NAV_ITEMS.map((item) => (
+                            <Link
+                                key={item.path}
+                                to={item.path}
+                                style={isActive(item.path) ? activeStyle : navItemStyle}
+                                title={isCollapsed ? item.label : ''}
+                            >
+                                <span style={{ fontSize: '1.2rem' }}>{item.icon}</span>
+                                {!isCollapsed && <span>{item.label}</span>}
+                            </Link>
+                        ))}
+
+                        {user.role === 'board' && (
+                            <>
+                                <div style={{ margin: '1rem 0', borderTop: '1px solid #eee' }} />
+                                {!isCollapsed && <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#aaa', marginBottom: '0.5rem', paddingLeft: '0.5rem' }}>Board</div>}
+
+                                {BOARD_ITEMS.map((item) => (
+                                    <Link
+                                        key={item.path}
+                                        to={item.path}
+                                        style={isActive(item.path) ? { ...boardItemStyle, backgroundColor: '#e6f0ff', color: '#0066cc', borderColor: '#0066cc' } : boardItemStyle}
+                                        title={isCollapsed ? item.label : ''}
+                                    >
+                                        <span style={{ fontSize: '1.2rem' }}>{item.icon}</span>
+                                        {!isCollapsed && <span>{item.label}</span>}
+                                    </Link>
+                                ))}
+                            </>
+                        )}
+
+                        {/* Help & FAQ */}
+                        <div style={{ margin: '1rem 0', borderTop: '1px solid #eee' }} />
+
+                        <Link
+                            to="/faq"
+                            style={isActive('/faq') ? activeStyle : navItemStyle}
+                            title={isCollapsed ? "FAQ" : ''}
+                        >
+                            <span style={{ fontSize: '1.2rem' }}>❓</span>
+                            {!isCollapsed && <span>FAQ</span>}
+                        </Link>
+
+                        {!isCollapsed ? (
+                            <>
+                                <div
+                                    onClick={() => setHelpOpen(!helpOpen)}
+                                    style={{ ...navItemStyle, cursor: 'pointer', justifyContent: 'space-between' }}
+                                >
+                                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                        <span style={{ fontSize: '1.2rem' }}>🆘</span>
+                                        <span>Help</span>
+                                    </div>
+                                    <span>{helpOpen ? '▾' : '▸'}</span>
+                                </div>
+                                {helpOpen && (
+                                    <div style={{ marginLeft: '1rem', borderLeft: '2px solid #eee' }}>
+                                        <Link to="/help/tech" style={{ padding: '0.5rem 1rem', color: 'hsl(215 15% 40%)', fontSize: '0.9rem', textDecoration: 'none', display: 'block' }}>Tech Support</Link>
+                                        <Link to="/help/hoa" style={{ padding: '0.5rem 1rem', color: 'hsl(215 15% 40%)', fontSize: '0.9rem', textDecoration: 'none', display: 'block' }}>HOA Team</Link>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <Link
+                                to="/help/tech"
+                                style={navItemStyle}
+                                title="Help"
+                            >
+                                <span style={{ fontSize: '1.2rem' }}>🆘</span>
+                            </Link>
+                        )}
+
+                    </div>
+                )}
+            </div>
+
+            {/* Footer / User Profile */}
+            <div style={{ padding: '1.5rem', borderTop: '1px solid #eee' }}>
+                {user ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: isCollapsed ? 'column' : 'row' }}>
+                        <Link to="/profile" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, overflow: 'hidden' }} title="My Profile">
+                            <div style={{
+                                width: '32px', height: '32px', borderRadius: '50%',
+                                backgroundColor: '#0066cc', color: 'white',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontWeight: 'bold', fontSize: '0.9rem', flexShrink: 0
+                            }}>
+                                {user.name.charAt(0)}
+                            </div>
+                            {!isCollapsed && (
+                                <div style={{ overflow: 'hidden' }}>
+                                    <div style={{ fontWeight: '600', fontSize: '0.9rem', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{user.name}</div>
+                                    <div style={{ fontSize: '0.7rem', color: '#888', textTransform: 'uppercase' }}>{user.role}</div>
+                                </div>
+                            )}
+                        </Link>
+
+                        {!isCollapsed ? (
+                            <button onClick={logout} style={{ border: '1px solid #ddd', background: 'white', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem' }}>
+                                Logout
+                            </button>
+                        ) : (
+                            <button onClick={logout} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.2rem' }} title="Logout">
+                                🚪
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {!isCollapsed ? (
+                            <>
+                                <button onClick={() => login('resident')} className="btn btn-primary" style={{ width: '100%', padding: '0.5rem', backgroundColor: '#0066cc', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', marginBottom: '0.25rem' }}>Login Resident</button>
+                                <button onClick={() => login('board')} className="btn" style={{ border: '1px solid #ddd', width: '100%', padding: '0.5rem', background: 'white', borderRadius: '4px', cursor: 'pointer', marginBottom: '0.25rem' }}>Login Board</button>
+                                <button onClick={() => login('management_company')} className="btn" style={{ border: '1px solid #ddd', width: '100%', padding: '0.5rem', background: 'white', borderRadius: '4px', cursor: 'pointer', marginBottom: '0.25rem', fontSize: '0.75rem' }}>Login Mgmt Co</button>
+                                <button onClick={() => login('super_admin')} className="btn" style={{ border: '1px solid #ddd', width: '100%', padding: '0.5rem', background: '#333', color: 'white', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>Login Super Admin</button>
+                            </>
+                        ) : (
+                            <button onClick={() => login('resident')} style={{ fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Login">🔑</button>
+                        )}
+                    </div>
+                )}
+            </div>
+        </nav>
+    );
+}

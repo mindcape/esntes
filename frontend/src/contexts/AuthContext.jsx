@@ -16,13 +16,26 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const login = (role) => {
-        const mockUser = {
+        let mockUser = {
             id: 1,
-            name: role === 'resident' ? 'John Doe' : 'Jane Smith',
             role: role,
-            address: role === 'resident' ? '123 Maple St, Unit 4B' : '100 Community Way, Office 1',
             avatar: `https://ui-avatars.com/api/?name=${role}&background=random`
         };
+
+        if (role === 'resident') {
+            mockUser.name = 'John Doe';
+            mockUser.address = '123 Maple St, Unit 4B';
+        } else if (role === 'board') {
+            mockUser.name = 'Jane Smith';
+            mockUser.address = '100 Community Way, Office 1';
+        } else if (role === 'super_admin') {
+            mockUser.name = 'System Admin';
+            mockUser.address = 'Global HQ';
+        } else if (role === 'management_company') {
+            mockUser.name = 'Prestige Management';
+            mockUser.address = '500 Corporate Blvd';
+        }
+
         setUser(mockUser);
         localStorage.setItem('esntes_user', JSON.stringify(mockUser));
     };
