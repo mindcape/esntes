@@ -30,107 +30,94 @@ class DirectoryProfile(BaseModel):
     is_opted_in: bool
     preferences: Optional[CommunicationPreferences] = None
 
-# Mock Database
-mock_events = [
-    {
-        "id": 1,
-        "title": "Annual Board Meeting",
-        "date": datetime.now() + timedelta(days=5),
-        "description": "Election of new officers.",
-        "type": EventType.MEETING,
-        "location": "Community Hall"
-    },
-    {
-        "id": 2,
-        "title": "Trash Pickup",
-        "date": datetime.now() + timedelta(days=1),
-        "description": "Regular weekly pickup.",
-        "type": EventType.MAINTENANCE,
-        "location": "Curbside"
-    },
-    {
-        "id": 3,
-        "title": "Summer BBQ",
-        "date": datetime.now() + timedelta(days=20),
-        "description": "Burgers and hot dogs provided!",
-        "type": EventType.SOCIAL,
-        "location": "Pool Area"
-    }
-]
+from sqlalchemy.orm import Session
+from backend.core.database import get_db
+from backend.auth.models import User, Role
+from passlib.context import CryptContext
 
-mock_directory = [
-    {
-        "id": 1,
-        "name": "John Doe",
-        "address": "123 Maple St",
-        "email": "john@example.com",
-        "phone": "555-0100",
-        "bio": "Loves gardening and board games.",
-        "is_opted_in": True,
-        "preferences": {
-            "general_email": True, "general_paper": False,
-            "ccr_email": True, "ccr_paper": False,
-            "collection_email": True, "collection_paper": True,
-            "billing_email": True, "billing_paper": False,
-            "mgmt_committee_notifications": True,
-            "phone_communications": False
-        }
-    },
-    {
-        "id": 2,
-        "name": "Jane Smith",
-        "address": "125 Maple St",
-        "email": "jane@hoa.com",
-        "phone": "555-0200",
-        "bio": "Board President.",
-        "is_opted_in": True,
-        "preferences": {
-            "general_email": True, "general_paper": False,
-            "ccr_email": True, "ccr_paper": False,
-            "collection_email": False, "collection_paper": True,
-            "billing_email": True, "billing_paper": False,
-            "mgmt_committee_notifications": True,
-            "phone_communications": True
-        }
-    },
-    {
-        "id": 3,
-        "name": "Bob Wilson",
-        "address": "127 Maple St",
-        "email": "bob@example.com",
-        "phone": None,
-        "bio": None,
-        "is_opted_in": False, # Should not be returned in public list normally, mocked logic below
-        "preferences": {
-            "general_email": False, "general_paper": True,
-            "ccr_email": False, "ccr_paper": True,
-            "collection_email": False, "collection_paper": True,
-            "billing_email": False, "billing_paper": True,
-            "mgmt_committee_notifications": False,
-            "phone_communications": False
-        }
-    }
-]
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-@router.get("/events", response_model=List[Event])
-async def get_events():
-    return sorted(mock_events, key=lambda x: x["date"])
+class ResidentCreate(BaseModel):
+    name: str
+    email: str
+    address: str
+    phone: Optional[str] = None
+    role_name: str = "resident" # 'resident' or 'board'
 
 @router.get("/directory", response_model=List[DirectoryProfile])
-async def get_directory():
-    # Filter for opted-in users
-    return [p for p in mock_directory if p["is_opted_in"]]
+async def get_directory(db: Session = Depends(get_db)):
+    # Fetch users who are opted in
+    users = db.query(User).filter(User.is_opted_in == True).all()
+    profiles = []
+    for u in users:
+        profiles.append(DirectoryProfile(
+            id=u.id,
+            name=u.full_name,
+            address=u.address or "N/A",
+            email=u.email,
+            phone=u.phone,
+            bio=u.bio,
+            is_opted_in=u.is_opted_in,
+            preferences=None # TODO: Parse JSON preferences if needed
+        ))
+    return profiles
 
 @router.get("/all-residents", response_model=List[DirectoryProfile])
-async def get_all_residents():
-    # Board only - returns everyone plus preferences
-    return mock_directory
+async def get_all_residents(db: Session = Depends(get_db)):
+    # Fetch all users (Board view)
+    users = db.query(User).all()
+    profiles = []
+    for u in users:
+        profiles.append(DirectoryProfile(
+            id=u.id,
+            name=u.full_name,
+            address=u.address or "N/A",
+            email=u.email,
+            phone=u.phone,
+            bio=u.bio,
+            is_opted_in=u.is_opted_in,
+            preferences=None
+        ))
+    return profiles
+
+@router.post("/residents")
+async def register_resident(resident: ResidentCreate, db: Session = Depends(get_db)):
+    # 1. Check if email exists
+    if db.query(User).filter(User.email == resident.email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # 2. Get Role ID
+    role = db.query(Role).filter(Role.name == resident.role_name).first()
+    if not role:
+        # Fallback or create if not exists (for now assuming seeded)
+        raise HTTPException(status_code=400, detail=f"Role {resident.role_name} not found")
+
+    # 3. Create User
+    # Default password for now (in real app, send invite email)
+    hashed_password = pwd_context.hash("welcome123") 
+    
+    new_user = User(
+        email=resident.email,
+        full_name=resident.name,
+        role_id=role.id,
+        address=resident.address,
+        phone=resident.phone,
+        is_opted_in=True, # Default to opt-in or False? Let's say True for convenience
+        is_active=True,
+        # auth0_id needs to be handled? reusing email for now as place holder or UUID
+        auth0_id=f"manual|{resident.email}" 
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"message": "Resident created successfully", "user_id": new_user.id}
 
 @router.post("/directory/opt-in")
-async def toggle_opt_in(user_id: int, status: bool):
-    # Mock update
-    for p in mock_directory:
-        if p["id"] == user_id:
-            p["is_opted_in"] = status
-            return p
-    raise HTTPException(status_code=404, detail="User not found")
+async def toggle_opt_in(user_id: int, status: bool, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.is_opted_in = status
+    db.commit()
+    return {"status": "updated", "is_opted_in": user.is_opted_in}
