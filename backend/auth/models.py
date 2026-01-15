@@ -21,6 +21,10 @@ class User(Base):
     is_opted_in = Column(Boolean, default=False)
     preferences = Column(String, nullable=True) # Stored as JSON string
 
+    # Multi-Tenancy
+    community_id = Column(Integer, ForeignKey("communities.id"), nullable=True) # Nullable for Super Admin? Or default community?
+    community = relationship("Community", back_populates="users")
+
 class Role(Base):
     __tablename__ = "roles"
 
