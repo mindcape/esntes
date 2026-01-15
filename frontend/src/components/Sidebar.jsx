@@ -128,6 +128,17 @@ export default function Sidebar() {
                             </>
                         )}
 
+                        {user.role === 'super_admin' && (
+                            <Link
+                                to="/admin"
+                                style={isActive('/admin') ? activeStyle : navItemStyle}
+                                title={isCollapsed ? "Admin Dashboard" : ''}
+                            >
+                                <span style={{ fontSize: '1.2rem' }}>⚙️</span>
+                                {!isCollapsed && <span>Admin Dashboard</span>}
+                            </Link>
+                        )}
+
                         {/* Help & FAQ */}
                         <div style={{ margin: '1rem 0', borderTop: '1px solid #eee' }} />
 
