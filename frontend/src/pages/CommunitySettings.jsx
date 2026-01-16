@@ -236,3 +236,110 @@ export default function CommunitySettings() {
         </div>
     );
 }
+
+function TeamSettings({ communityId }) {
+    const [admins, setAdmins] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [newAdmin, setNewAdmin] = useState({ name: '', email: '' });
+
+    useEffect(() => {
+        fetchAdmins();
+    }, [communityId]);
+
+    const fetchAdmins = () => {
+        setLoading(true);
+        fetch(`${API_URL}/api/admin/communities/${communityId}/admins`)
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) setAdmins(data);
+                else setAdmins([]);
+            })
+            .catch(err => console.error(err))
+            .finally(() => setLoading(false));
+    };
+
+    const handleAddAdmin = async (e) => {
+        e.preventDefault();
+        try {
+            const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/admins`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newAdmin)
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert(data.message);
+                setNewAdmin({ name: '', email: '' });
+                fetchAdmins();
+            } else {
+                alert("Error: " + data.detail);
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Failed to add admin");
+        }
+    };
+
+    return (
+        <div style={{ maxWidth: '800px' }}>
+            <h3 style={{ marginTop: 0 }}>Step 2: Assign Site Admin</h3>
+            <p style={{ color: '#666', marginBottom: '2rem' }}>Add a management company or initial admin user who will manage this community.</p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 2fr) 1fr', gap: '2rem' }}>
+                <div>
+                    <h4 style={{ marginBottom: '1rem' }}>Existing Admins</h4>
+                    {loading ? (
+                        <div>Loading...</div>
+                    ) : admins.length === 0 ? (
+                        <div style={{ padding: '1rem', background: '#f5f5f5', borderRadius: '4px', textAlign: 'center', color: '#666' }}>
+                            No admins assigned yet.
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            {admins.map(admin => (
+                                <div key={admin.id} style={{ padding: '1rem', border: '1px solid #eee', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <div style={{ fontWeight: '600' }}>{admin.full_name}</div>
+                                        <div style={{ fontSize: '0.9rem', color: '#666' }}>{admin.email}</div>
+                                    </div>
+                                    <span className="status-badge status-open">Admin</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '8px', height: 'fit-content' }}>
+                    <h4 style={{ marginTop: 0, marginBottom: '1rem' }}>Add New Admin</h4>
+                    <form onSubmit={handleAddAdmin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '500', marginBottom: '0.25rem' }}>Full Name</label>
+                            <input
+                                type="text"
+                                required
+                                value={newAdmin.name}
+                                onChange={e => setNewAdmin({ ...newAdmin, name: e.target.value })}
+                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                                placeholder="John Doe"
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '500', marginBottom: '0.25rem' }}>Email Address</label>
+                            <input
+                                type="email"
+                                required
+                                value={newAdmin.email}
+                                onChange={e => setNewAdmin({ ...newAdmin, email: e.target.value })}
+                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                                placeholder="john@example.com"
+                            />
+                        </div>
+                        <button type="submit" className="btn btn-primary" style={{ marginTop: '0.5rem' }}>
+                            Add Admin
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    );
+}
