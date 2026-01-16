@@ -21,6 +21,7 @@ import ARCRequests from './pages/ARCRequests';
 import BoardARC from './pages/BoardARC';
 import BoardViolations from './pages/BoardViolations';
 import AdminDashboard from './pages/AdminDashboard';
+import CommunitySettings from './pages/CommunitySettings';
 
 import Sidebar from './components/Sidebar';
 
@@ -65,6 +66,7 @@ function App() {
 
                 {/* Super Admin Route - Handles its own auth */}
                 <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/community/:id" element={<CommunitySettings />} />
               </Routes>
             </main>
           </div>
