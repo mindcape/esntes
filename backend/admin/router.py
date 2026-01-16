@@ -14,6 +14,72 @@ router = APIRouter()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+class SiteAdminCreate(BaseModel):
+    email: str
+    name: str
+
+class SiteAdminResponse(BaseModel):
+    id: int
+    email: str
+    full_name: str
+    
+    class Config:
+        orm_mode = True
+
+@router.get("/communities/{community_id}/admins", response_model=List[SiteAdminResponse])
+async def list_site_admins(community_id: int, db: Session = Depends(get_db)):
+    # Get Admin Role
+    admin_role = db.query(Role).filter(Role.name == "admin").first()
+    if not admin_role:
+        raise HTTPException(status_code=500, detail="Admin role not configured")
+
+    admins = db.query(User).filter(
+        User.community_id == community_id,
+        User.role_id == admin_role.id
+    ).all()
+    return admins
+
+@router.post("/communities/{community_id}/admins")
+async def create_site_admin(community_id: int, admin_data: SiteAdminCreate, db: Session = Depends(get_db)):
+    # 1. Verify Community
+    community = db.query(Community).filter(Community.id == community_id).first()
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+        
+    # 2. Get Admin Role
+    admin_role = db.query(Role).filter(Role.name == "admin").first()
+    if not admin_role:
+        # Fallback if roles aren't seeded, though they should be
+        admin_role = Role(name="admin", description="Community Administrator")
+        db.add(admin_role)
+        db.commit()
+    
+    # 3. Check if user exists
+    existing_user = db.query(User).filter(User.email == admin_data.email).first()
+    
+    if existing_user:
+        # Update existing user to be admin of this community
+        # Note: This might overwrite their previous role/community.
+        # For simplicity in this iteration, we assume a user belongs to one community.
+        existing_user.role_id = admin_role.id
+        existing_user.community_id = community_id
+        db.commit()
+        return {"message": f"User {existing_user.email} promoted to Site Admin for {community.name}"}
+    else:
+        # Create new user
+        new_user = User(
+            email=admin_data.email,
+            full_name=admin_data.name,
+            community_id=community_id,
+            role_id=admin_role.id,
+            auth0_id=f"admin|{admin_data.email}", # Mock Auth0 ID
+            is_active=True
+        )
+        new_user.hashed_password = pwd_context.hash("welcome123")
+        db.add(new_user)
+        db.commit()
+        return {"message": f"Created new Site Admin {new_user.email} for {community.name}"}
+
 @router.post("/communities/{community_id}/import")
 async def import_residents(community_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
     # Verify community exists
