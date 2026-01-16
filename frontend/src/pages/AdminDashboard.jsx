@@ -14,6 +14,10 @@ export default function AdminDashboard() {
         units_count: 0
     });
 
+    const [selectedCommunity, setSelectedCommunity] = useState(null);
+    const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState('general');
+
     useEffect(() => {
         if (user && user.role === 'super_admin') {
             fetchCommunities();
