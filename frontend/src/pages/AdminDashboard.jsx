@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config';
 
 import { useAuth } from '../contexts/AuthContext';
 
 export default function AdminDashboard() {
     const { user, login } = useAuth();
+    const navigate = useNavigate();
     const [communities, setCommunities] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -87,10 +89,6 @@ export default function AdminDashboard() {
             alert('Failed to connect to server');
         }
     };
-
-    const [selectedCommunity, setSelectedCommunity] = useState(null);
-    const [settingsModalOpen, setSettingsModalOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState('general');
 
     const handleManage = (community) => {
         setSelectedCommunity({
@@ -188,7 +186,7 @@ export default function AdminDashboard() {
                                     {comm.subdomain ? <span className="status-badge status-open">{comm.subdomain}</span> : '-'}
                                 </td>
                                 <td style={{ padding: '1rem' }}>
-                                    <button onClick={() => handleManage(comm)} className="btn" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}>Manage</button>
+                                    <button onClick={() => navigate(`/admin/community/${comm.id}`)} className="btn" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}>Manage</button>
                                 </td>
                             </tr>
                         ))}
@@ -196,152 +194,6 @@ export default function AdminDashboard() {
                 </table>
             </div>
 
-            {/* Settings Modal */}
-            {
-                settingsModalOpen && selectedCommunity && (
-                    <div style={{
-                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                        backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
-                    }}>
-                        <div style={{ backgroundColor: 'white', padding: '0', borderRadius: '0.5rem', width: '600px', maxWidth: '95%', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
-                            <div style={{ padding: '1.5rem', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <h2 style={{ margin: 0 }}>Configure {selectedCommunity.name}</h2>
-                                <button onClick={() => setSettingsModalOpen(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.5rem' }}>&times;</button>
-                            </div>
-
-                            <div style={{ display: 'flex', borderBottom: '1px solid #eee' }}>
-                                <button
-                                    onClick={() => setActiveTab('general')}
-                                    style={{ flex: 1, padding: '1rem', background: activeTab === 'general' ? '#f8fafc' : 'white', border: 'none', borderBottom: activeTab === 'general' ? '2px solid #0066cc' : 'none', cursor: 'pointer', fontWeight: '500' }}
-                                >General</button>
-                                <button
-                                    onClick={() => setActiveTab('modules')}
-                                    style={{ flex: 1, padding: '1rem', background: activeTab === 'modules' ? '#f8fafc' : 'white', border: 'none', borderBottom: activeTab === 'modules' ? '2px solid #0066cc' : 'none', cursor: 'pointer', fontWeight: '500' }}
-                                >Modules</button>
-                                <button
-                                    onClick={() => setActiveTab('data')}
-                                    style={{ flex: 1, padding: '1rem', background: activeTab === 'data' ? '#f8fafc' : 'white', border: 'none', borderBottom: activeTab === 'data' ? '2px solid #0066cc' : 'none', cursor: 'pointer', fontWeight: '500' }}
-                                >Data</button>
-                                <button
-                                    onClick={() => setActiveTab('finance')}
-                                    style={{ flex: 1, padding: '1rem', background: activeTab === 'finance' ? '#f8fafc' : 'white', border: 'none', borderBottom: activeTab === 'finance' ? '2px solid #0066cc' : 'none', cursor: 'pointer', fontWeight: '500' }}
-                                >Finance</button>
-                            </div>
-
-                            <div style={{ padding: '2rem', overflowY: 'auto' }}>
-                                {activeTab === 'general' && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Subdomain</label>
-                                            <div style={{ display: 'flex', alignItems: 'center' }}>
-                                                <input
-                                                    type="text"
-                                                    value={selectedCommunity.subdomain || ''}
-                                                    onChange={e => setSelectedCommunity({ ...selectedCommunity, subdomain: e.target.value })}
-                                                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px 0 0 4px' }}
-                                                    placeholder="pinevalley"
-                                                />
-                                                <span style={{ padding: '0.5rem', background: '#f5f5f5', border: '1px solid #ddd', borderLeft: 'none', borderRadius: '0 4px 4px 0', color: '#666' }}>.esntes.com</span>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Primary Color</label>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <input
-                                                    type="color"
-                                                    value={selectedCommunity.branding_settings?.primary_color || '#0066cc'}
-                                                    onChange={e => setSelectedCommunity({ ...selectedCommunity, branding_settings: { ...selectedCommunity.branding_settings, primary_color: e.target.value } })}
-                                                    style={{ width: '50px', height: '40px', padding: 0, border: 'none' }}
-                                                />
-                                                <span style={{ color: '#666' }}>{selectedCommunity.branding_settings?.primary_color}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {activeTab === 'modules' && (
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                        {Object.keys(selectedCommunity.modules_enabled).map(module => (
-                                            <label key={module} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', border: '1px solid #eee', borderRadius: '8px', cursor: 'pointer' }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedCommunity.modules_enabled[module]}
-                                                    onChange={() => toggleModule(module)}
-                                                />
-                                                <span style={{ textTransform: 'capitalize', fontWeight: '500' }}>{module}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {activeTab === 'data' && (
-                                    <div>
-                                        <h3 style={{ marginTop: 0, fontSize: '1rem' }}>Bulk Import Residents</h3>
-                                        <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1rem' }}>Upload a CSV file with headers: <code>email, name, address, role</code>.</p>
-
-                                        <div style={{ marginBottom: '1rem' }}>
-                                            <input type="file" accept=".csv" id="csvInput" style={{ display: 'block', width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }} />
-                                        </div>
-
-                                        <button
-                                            onClick={async () => {
-                                                const fileInput = document.getElementById('csvInput');
-                                                if (!fileInput.files.length) return alert("Please select a file");
-
-                                                const formData = new FormData();
-                                                formData.append('file', fileInput.files[0]);
-
-                                                try {
-                                                    const res = await fetch(`${API_URL}/api/admin/communities/${selectedCommunity.id}/import`, {
-                                                        method: 'POST',
-                                                        body: formData
-                                                    });
-                                                    const data = await res.json();
-                                                    if (res.ok) {
-                                                        alert(data.message);
-                                                        if (data.errors && data.errors.length > 0) {
-                                                            alert("Completed with warnings:\n" + data.errors.join("\n"));
-                                                        }
-                                                    } else {
-                                                        alert("Error: " + data.detail);
-                                                    }
-                                                } catch (e) {
-                                                    console.error(e);
-                                                    alert("Import failed");
-                                                }
-                                            }}
-                                            className="btn btn-primary"
-                                        >
-                                            Upload & Import
-                                        </button>
-                                    </div>
-                                )}
-
-                                {activeTab === 'finance' && (
-                                    <div>
-                                        <h3 style={{ marginTop: 0, fontSize: '1rem' }}>Financial Setup</h3>
-                                        <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Link the community's bank account or payment processor (Stripe) to enable rent collection and fee payments.</p>
-
-                                        <div style={{ padding: '1.5rem', border: '1px dashed #ccc', borderRadius: '8px', textAlign: 'center', backgroundColor: '#fafafa' }}>
-                                            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🏦</div>
-                                            <h4 style={{ margin: '0 0 0.5rem 0' }}>No Account Linked</h4>
-                                            <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '1rem' }}>Connect via Stripe Connect</p>
-                                            <button className="btn" style={{ backgroundColor: '#635bff', color: 'white', border: 'none' }} onClick={() => alert("Stripe Integration coming soon")}>
-                                                Connect with Stripe
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div style={{ padding: '1.5rem', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                                <button onClick={() => setSettingsModalOpen(false)} className="btn" style={{ border: '1px solid #ddd' }}>Cancel</button>
-                                <button onClick={handleUpdate} className="btn btn-primary">Save Changes</button>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
 
             {/* Create Modal */}
             {
