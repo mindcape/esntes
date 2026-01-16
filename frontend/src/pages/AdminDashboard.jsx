@@ -218,6 +218,10 @@ export default function AdminDashboard() {
                                     onClick={() => setActiveTab('data')}
                                     style={{ flex: 1, padding: '1rem', background: activeTab === 'data' ? '#f8fafc' : 'white', border: 'none', borderBottom: activeTab === 'data' ? '2px solid #0066cc' : 'none', cursor: 'pointer', fontWeight: '500' }}
                                 >Data</button>
+                                <button
+                                    onClick={() => setActiveTab('finance')}
+                                    style={{ flex: 1, padding: '1rem', background: activeTab === 'finance' ? '#f8fafc' : 'white', border: 'none', borderBottom: activeTab === 'finance' ? '2px solid #0066cc' : 'none', cursor: 'pointer', fontWeight: '500' }}
+                                >Finance</button>
                             </div>
 
                             <div style={{ padding: '2rem', overflowY: 'auto' }}>
@@ -306,6 +310,22 @@ export default function AdminDashboard() {
                                         >
                                             Upload & Import
                                         </button>
+                                    </div>
+                                )}
+
+                                {activeTab === 'finance' && (
+                                    <div>
+                                        <h3 style={{ marginTop: 0, fontSize: '1rem' }}>Financial Setup</h3>
+                                        <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Link the community's bank account or payment processor (Stripe) to enable rent collection and fee payments.</p>
+
+                                        <div style={{ padding: '1.5rem', border: '1px dashed #ccc', borderRadius: '8px', textAlign: 'center', backgroundColor: '#fafafa' }}>
+                                            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🏦</div>
+                                            <h4 style={{ margin: '0 0 0.5rem 0' }}>No Account Linked</h4>
+                                            <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '1rem' }}>Connect via Stripe Connect</p>
+                                            <button className="btn" style={{ backgroundColor: '#635bff', color: 'white', border: 'none' }} onClick={() => alert("Stripe Integration coming soon")}>
+                                                Connect with Stripe
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>
