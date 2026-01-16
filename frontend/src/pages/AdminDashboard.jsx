@@ -214,6 +214,10 @@ export default function AdminDashboard() {
                                     onClick={() => setActiveTab('modules')}
                                     style={{ flex: 1, padding: '1rem', background: activeTab === 'modules' ? '#f8fafc' : 'white', border: 'none', borderBottom: activeTab === 'modules' ? '2px solid #0066cc' : 'none', cursor: 'pointer', fontWeight: '500' }}
                                 >Modules</button>
+                                <button
+                                    onClick={() => setActiveTab('data')}
+                                    style={{ flex: 1, padding: '1rem', background: activeTab === 'data' ? '#f8fafc' : 'white', border: 'none', borderBottom: activeTab === 'data' ? '2px solid #0066cc' : 'none', cursor: 'pointer', fontWeight: '500' }}
+                                >Data</button>
                             </div>
 
                             <div style={{ padding: '2rem', overflowY: 'auto' }}>
@@ -259,6 +263,49 @@ export default function AdminDashboard() {
                                                 <span style={{ textTransform: 'capitalize', fontWeight: '500' }}>{module}</span>
                                             </label>
                                         ))}
+                                    </div>
+                                )}
+
+                                {activeTab === 'data' && (
+                                    <div>
+                                        <h3 style={{ marginTop: 0, fontSize: '1rem' }}>Bulk Import Residents</h3>
+                                        <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1rem' }}>Upload a CSV file with headers: <code>email, name, address, role</code>.</p>
+
+                                        <div style={{ marginBottom: '1rem' }}>
+                                            <input type="file" accept=".csv" id="csvInput" style={{ display: 'block', width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }} />
+                                        </div>
+
+                                        <button
+                                            onClick={async () => {
+                                                const fileInput = document.getElementById('csvInput');
+                                                if (!fileInput.files.length) return alert("Please select a file");
+
+                                                const formData = new FormData();
+                                                formData.append('file', fileInput.files[0]);
+
+                                                try {
+                                                    const res = await fetch(`${API_URL}/api/admin/communities/${selectedCommunity.id}/import`, {
+                                                        method: 'POST',
+                                                        body: formData
+                                                    });
+                                                    const data = await res.json();
+                                                    if (res.ok) {
+                                                        alert(data.message);
+                                                        if (data.errors && data.errors.length > 0) {
+                                                            alert("Completed with warnings:\n" + data.errors.join("\n"));
+                                                        }
+                                                    } else {
+                                                        alert("Error: " + data.detail);
+                                                    }
+                                                } catch (e) {
+                                                    console.error(e);
+                                                    alert("Import failed");
+                                                }
+                                            }}
+                                            className="btn btn-primary"
+                                        >
+                                            Upload & Import
+                                        </button>
                                     </div>
                                 )}
                             </div>
