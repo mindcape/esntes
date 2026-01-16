@@ -106,6 +106,10 @@ export default function CommunitySettings() {
                         style={{ padding: '1rem 2rem', background: activeTab === 'data' ? '#f8fafc' : 'white', border: 'none', borderBottom: activeTab === 'data' ? '2px solid #0066cc' : 'none', cursor: 'pointer', fontWeight: '500' }}
                     >Data</button>
                     <button
+                        onClick={() => setActiveTab('team')}
+                        style={{ padding: '1rem 2rem', background: activeTab === 'team' ? '#f8fafc' : 'white', border: 'none', borderBottom: activeTab === 'team' ? '2px solid #0066cc' : 'none', cursor: 'pointer', fontWeight: '500' }}
+                    >Team</button>
+                    <button
                         onClick={() => setActiveTab('finance')}
                         style={{ padding: '1rem 2rem', background: activeTab === 'finance' ? '#f8fafc' : 'white', border: 'none', borderBottom: activeTab === 'finance' ? '2px solid #0066cc' : 'none', cursor: 'pointer', fontWeight: '500' }}
                     >Finance</button>
@@ -113,6 +117,9 @@ export default function CommunitySettings() {
 
                 {/* Content */}
                 <div style={{ padding: '2rem' }}>
+                    {activeTab === 'team' && (
+                        <TeamSettings communityId={community.id} />
+                    )}
                     {activeTab === 'general' && (
                         <div style={{ maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                             <div>
