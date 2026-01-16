@@ -1,12 +1,73 @@
-from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
-from typing import List, Optional
+from fastapi import File, UploadFile
+import csv
+import io
+from backend.auth.models import User, Role
+from passlib.context import CryptContext
 
-from backend.core.database import get_db
-from backend.community.models import Community
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-router = APIRouter()
+@router.post("/communities/{community_id}/import")
+async def import_residents(community_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    # Verify community exists
+    community = db.query(Community).filter(Community.id == community_id).first()
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+
+    # Read and decode file
+    content = await file.read()
+    decoded = content.decode('utf-8')
+    csv_reader = csv.DictReader(io.StringIO(decoded))
+
+    # Pre-fetch roles
+    roles = {r.name: r.id for r in db.query(Role).all()}
+    
+    imported_count = 0
+    errors = []
+
+    for row in csv_reader:
+        email = row.get('email')
+        name = row.get('name')
+        address = row.get('address')
+        role_name = row.get('role', 'resident').lower() # Default to resident
+
+        if not email:
+            continue
+            
+        # Check existing
+        if db.query(User).filter(User.email == email).first():
+            errors.append(f"Skipped {email}: Already exists")
+            continue
+
+        # Get Role ID
+        role_id = roles.get(role_name)
+        if not role_id:
+            # Fallback mapping if needed or default
+            if 'board' in role_name: role_id = roles.get('board')
+            else: role_id = roles.get('resident')
+        
+        # Create User
+        new_user = User(
+            email=email,
+            full_name=name,
+            address=address,
+            community_id=community_id,
+            role_id=role_id,
+            auth0_id=f"import|{email}", # Mock Auth0 ID
+            is_active=True,
+            is_opted_in=True
+        )
+        # Set default password (welcom123) - In real app, trigger reset email
+        new_user.hashed_password = pwd_context.hash("welcome123") 
+        
+        db.add(new_user)
+        imported_count += 1
+
+    db.commit()
+    
+    return {
+        "message": f"Successfully imported {imported_count} residents",
+        "errors": errors
+    }
 
 class CommunityCreate(BaseModel):
     name: str
