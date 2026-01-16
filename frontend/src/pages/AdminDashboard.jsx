@@ -138,9 +138,31 @@ export default function AdminDashboard() {
 
     if (loading) return <div className="container">Loading...</div>;
 
-    // ... (keep return statement start)
+    return (
+        <div className="container">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <div>
+                    <h1 style={{ margin: 0 }}>Super Admin Dashboard</h1>
+                    <p style={{ color: '#666', marginTop: '0.5rem' }}>Overview of all Communities (HOAs)</p>
+                </div>
+                <button onClick={() => setShowModal(true)} className="btn btn-primary">
+                    + Onboard New Community
+                </button>
+            </div>
 
-    {/* Communities List */ }
+            {/* Metrics */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+                <div className="card">
+                    <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>Total Communities</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{communities.length}</div>
+                </div>
+                <div className="card">
+                    <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>Total Units Managed</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>
+                        {communities.reduce((acc, curr) => acc + (curr.units_count || 0), 0)}
+                    </div>
+                </div>
+            </div>
             <h2 style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Active Communities</h2>
             <div className="card" style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -170,129 +192,129 @@ export default function AdminDashboard() {
                 </table>
             </div>
 
-    {/* Settings Modal */ }
-    {
-        settingsModalOpen && selectedCommunity && (
-            <div style={{
-                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
-            }}>
-                <div style={{ backgroundColor: 'white', padding: '0', borderRadius: '0.5rem', width: '600px', maxWidth: '95%', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
-                    <div style={{ padding: '1.5rem', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h2 style={{ margin: 0 }}>Configure {selectedCommunity.name}</h2>
-                        <button onClick={() => setSettingsModalOpen(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.5rem' }}>&times;</button>
-                    </div>
+            {/* Settings Modal */}
+            {
+                settingsModalOpen && selectedCommunity && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
+                    }}>
+                        <div style={{ backgroundColor: 'white', padding: '0', borderRadius: '0.5rem', width: '600px', maxWidth: '95%', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+                            <div style={{ padding: '1.5rem', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h2 style={{ margin: 0 }}>Configure {selectedCommunity.name}</h2>
+                                <button onClick={() => setSettingsModalOpen(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.5rem' }}>&times;</button>
+                            </div>
 
-                    <div style={{ display: 'flex', borderBottom: '1px solid #eee' }}>
-                        <button
-                            onClick={() => setActiveTab('general')}
-                            style={{ flex: 1, padding: '1rem', background: activeTab === 'general' ? '#f8fafc' : 'white', border: 'none', borderBottom: activeTab === 'general' ? '2px solid #0066cc' : 'none', cursor: 'pointer', fontWeight: '500' }}
-                        >General</button>
-                        <button
-                            onClick={() => setActiveTab('modules')}
-                            style={{ flex: 1, padding: '1rem', background: activeTab === 'modules' ? '#f8fafc' : 'white', border: 'none', borderBottom: activeTab === 'modules' ? '2px solid #0066cc' : 'none', cursor: 'pointer', fontWeight: '500' }}
-                        >Modules</button>
-                    </div>
+                            <div style={{ display: 'flex', borderBottom: '1px solid #eee' }}>
+                                <button
+                                    onClick={() => setActiveTab('general')}
+                                    style={{ flex: 1, padding: '1rem', background: activeTab === 'general' ? '#f8fafc' : 'white', border: 'none', borderBottom: activeTab === 'general' ? '2px solid #0066cc' : 'none', cursor: 'pointer', fontWeight: '500' }}
+                                >General</button>
+                                <button
+                                    onClick={() => setActiveTab('modules')}
+                                    style={{ flex: 1, padding: '1rem', background: activeTab === 'modules' ? '#f8fafc' : 'white', border: 'none', borderBottom: activeTab === 'modules' ? '2px solid #0066cc' : 'none', cursor: 'pointer', fontWeight: '500' }}
+                                >Modules</button>
+                            </div>
 
-                    <div style={{ padding: '2rem', overflowY: 'auto' }}>
-                        {activeTab === 'general' && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Subdomain</label>
-                                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                                        <input
-                                            type="text"
-                                            value={selectedCommunity.subdomain || ''}
-                                            onChange={e => setSelectedCommunity({ ...selectedCommunity, subdomain: e.target.value })}
-                                            style={{ flex: 1, padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px 0 0 4px' }}
-                                            placeholder="pinevalley"
-                                        />
-                                        <span style={{ padding: '0.5rem', background: '#f5f5f5', border: '1px solid #ddd', borderLeft: 'none', borderRadius: '0 4px 4px 0', color: '#666' }}>.esntes.com</span>
+                            <div style={{ padding: '2rem', overflowY: 'auto' }}>
+                                {activeTab === 'general' && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Subdomain</label>
+                                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                <input
+                                                    type="text"
+                                                    value={selectedCommunity.subdomain || ''}
+                                                    onChange={e => setSelectedCommunity({ ...selectedCommunity, subdomain: e.target.value })}
+                                                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px 0 0 4px' }}
+                                                    placeholder="pinevalley"
+                                                />
+                                                <span style={{ padding: '0.5rem', background: '#f5f5f5', border: '1px solid #ddd', borderLeft: 'none', borderRadius: '0 4px 4px 0', color: '#666' }}>.esntes.com</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Primary Color</label>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <input
+                                                    type="color"
+                                                    value={selectedCommunity.branding_settings?.primary_color || '#0066cc'}
+                                                    onChange={e => setSelectedCommunity({ ...selectedCommunity, branding_settings: { ...selectedCommunity.branding_settings, primary_color: e.target.value } })}
+                                                    style={{ width: '50px', height: '40px', padding: 0, border: 'none' }}
+                                                />
+                                                <span style={{ color: '#666' }}>{selectedCommunity.branding_settings?.primary_color}</span>
+                                            </div>
+                                        </div>
                                     </div>
+                                )}
+
+                                {activeTab === 'modules' && (
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        {Object.keys(selectedCommunity.modules_enabled).map(module => (
+                                            <label key={module} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', border: '1px solid #eee', borderRadius: '8px', cursor: 'pointer' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedCommunity.modules_enabled[module]}
+                                                    onChange={() => toggleModule(module)}
+                                                />
+                                                <span style={{ textTransform: 'capitalize', fontWeight: '500' }}>{module}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ padding: '1.5rem', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                                <button onClick={() => setSettingsModalOpen(false)} className="btn" style={{ border: '1px solid #ddd' }}>Cancel</button>
+                                <button onClick={handleUpdate} className="btn btn-primary">Save Changes</button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Create Modal */}
+            {
+                showModal && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
+                    }}>
+                        <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '0.5rem', width: '400px', maxWidth: '90%' }}>
+                            <h2 style={{ marginTop: 0 }}>Onboard New Community</h2>
+                            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Community Name</label>
+                                    <input
+                                        type="text" required placeholder="e.g. Pine Valley HOA"
+                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                                        value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                    />
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Primary Color</label>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <input
-                                            type="color"
-                                            value={selectedCommunity.branding_settings?.primary_color || '#0066cc'}
-                                            onChange={e => setSelectedCommunity({ ...selectedCommunity, branding_settings: { ...selectedCommunity.branding_settings, primary_color: e.target.value } })}
-                                            style={{ width: '50px', height: '40px', padding: 0, border: 'none' }}
-                                        />
-                                        <span style={{ color: '#666' }}>{selectedCommunity.branding_settings?.primary_color}</span>
-                                    </div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Address</label>
+                                    <input
+                                        type="text" required placeholder="e.g. 100 Pine Valley Dr"
+                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                                        value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })}
+                                    />
                                 </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'modules' && (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                {Object.keys(selectedCommunity.modules_enabled).map(module => (
-                                    <label key={module} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', border: '1px solid #eee', borderRadius: '8px', cursor: 'pointer' }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedCommunity.modules_enabled[module]}
-                                            onChange={() => toggleModule(module)}
-                                        />
-                                        <span style={{ textTransform: 'capitalize', fontWeight: '500' }}>{module}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        )}
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Number of Units</label>
+                                    <input
+                                        type="number" required min="1"
+                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                                        value={formData.units_count} onChange={e => setFormData({ ...formData, units_count: parseInt(e.target.value) })}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Create</button>
+                                    <button type="button" onClick={() => setShowModal(false)} className="btn" style={{ flex: 1, border: '1px solid #ccc' }}>Cancel</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-
-                    <div style={{ padding: '1.5rem', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                        <button onClick={() => setSettingsModalOpen(false)} className="btn" style={{ border: '1px solid #ddd' }}>Cancel</button>
-                        <button onClick={handleUpdate} className="btn btn-primary">Save Changes</button>
-                    </div>
-                </div>
-            </div>
-        )
-    }
-
-    {/* Create Modal */ }
-    {
-        showModal && (
-            <div style={{
-                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
-            }}>
-                <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '0.5rem', width: '400px', maxWidth: '90%' }}>
-                    <h2 style={{ marginTop: 0 }}>Onboard New Community</h2>
-                    <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Community Name</label>
-                            <input
-                                type="text" required placeholder="e.g. Pine Valley HOA"
-                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
-                                value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
-                            />
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Address</label>
-                            <input
-                                type="text" required placeholder="e.g. 100 Pine Valley Dr"
-                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
-                                value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })}
-                            />
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Number of Units</label>
-                            <input
-                                type="number" required min="1"
-                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
-                                value={formData.units_count} onChange={e => setFormData({ ...formData, units_count: parseInt(e.target.value) })}
-                            />
-                        </div>
-                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                            <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Create</button>
-                            <button type="button" onClick={() => setShowModal(false)} className="btn" style={{ flex: 1, border: '1px solid #ccc' }}>Cancel</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        )
-    }
+                )
+            }
         </div >
     );
 }
