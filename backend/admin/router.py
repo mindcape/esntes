@@ -63,3 +63,39 @@ async def create_community(community: CommunityCreate, db: Session = Depends(get
 @router.get("/communities", response_model=List[CommunityResponse])
 async def list_communities(db: Session = Depends(get_db)):
     return db.query(Community).all()
+
+class CommunityUpdate(BaseModel):
+    name: Optional[str] = None
+    address: Optional[str] = None
+    units_count: Optional[int] = None
+    amenities: Optional[List[str]] = None
+    subdomain: Optional[str] = None
+    branding_settings: Optional[dict] = None
+    modules_enabled: Optional[dict] = None
+    payment_gateway_id: Optional[str] = None
+
+@router.put("/communities/{community_id}", response_model=CommunityResponse)
+async def update_community(community_id: int, community: CommunityUpdate, db: Session = Depends(get_db)):
+    db_community = db.query(Community).filter(Community.id == community_id).first()
+    if not db_community:
+        raise HTTPException(status_code=404, detail="Community not found")
+    
+    update_data = community.dict(exclude_unset=True)
+    
+    # Check uniqueness if name or subdomain is being updated
+    if "name" in update_data:
+        existing = db.query(Community).filter(Community.name == update_data["name"]).filter(Community.id != community_id).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Community name already taken")
+            
+    if "subdomain" in update_data and update_data["subdomain"]:
+        existing_sub = db.query(Community).filter(Community.subdomain == update_data["subdomain"]).filter(Community.id != community_id).first()
+        if existing_sub:
+            raise HTTPException(status_code=400, detail="Subdomain already taken")
+
+    for key, value in update_data.items():
+        setattr(db_community, key, value)
+
+    db.commit()
+    db.refresh(db_community)
+    return db_community
