@@ -14,14 +14,13 @@ const NAV_ITEMS = [
 ];
 
 const BOARD_ITEMS = [
-    { path: '/board/residents', label: 'Manage Residents', icon: '📝' },
     { path: '/board/financials', label: 'Financial Management', icon: '📊' },
     { path: '/board/arc', label: 'ARC Approvals', icon: '✅' },
     { path: '/board/violations', label: 'Violations Management', icon: '👮' },
 ];
 
 export default function Sidebar() {
-    const { user, login, logout } = useAuth();
+    const { user, logout } = useAuth();
     const [isCollapsed, setIsCollapsed] = useState(false);
     const location = useLocation();
     const [helpOpen, setHelpOpen] = useState(false);
@@ -55,6 +54,21 @@ export default function Sidebar() {
         backgroundColor: '#f8fafc',
         border: '1px solid #e2e8f0',
     };
+
+    // Filter Nav Items based on user community modules
+    const visibleNavItems = NAV_ITEMS.filter(item => {
+        if (!user || user.role === 'super_admin') return true;
+
+        const modules = user.community?.modules_enabled || {};
+
+        if (item.path === '/visitors' && modules.visitors === false) return false;
+        if (item.path === '/elections' && modules.elections === false) return false;
+        if (item.path === '/violations' && modules.violations === false) return false;
+        if (item.path === '/documents' && modules.documents === false) return false;
+        if (item.path === '/calendar' && modules.calendar === false) return false;
+
+        return true;
+    });
 
     return (
         <nav style={{
@@ -97,7 +111,7 @@ export default function Sidebar() {
             <div style={{ flex: 1, overflowY: 'auto', padding: isCollapsed ? '0 0.5rem' : '0 1rem' }}>
                 {user && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        {user.role !== 'super_admin' && NAV_ITEMS.map((item) => (
+                        {user.role !== 'super_admin' && visibleNavItems.map((item) => (
                             <Link
                                 key={item.path}
                                 to={item.path}
@@ -139,45 +153,49 @@ export default function Sidebar() {
                             </Link>
                         )}
 
-                        {/* Help & FAQ */}
-                        <div style={{ margin: '1rem 0', borderTop: '1px solid #eee' }} />
-
-                        <Link
-                            to="/faq"
-                            style={isActive('/faq') ? activeStyle : navItemStyle}
-                            title={isCollapsed ? "FAQ" : ''}
-                        >
-                            <span style={{ fontSize: '1.2rem' }}>❓</span>
-                            {!isCollapsed && <span>FAQ</span>}
-                        </Link>
-
-                        {!isCollapsed ? (
+                        {user.role !== 'super_admin' && (
                             <>
-                                <div
-                                    onClick={() => setHelpOpen(!helpOpen)}
-                                    style={{ ...navItemStyle, cursor: 'pointer', justifyContent: 'space-between' }}
+                                {/* Help & FAQ */}
+                                <div style={{ margin: '1rem 0', borderTop: '1px solid #eee' }} />
+
+                                <Link
+                                    to="/faq"
+                                    style={isActive('/faq') ? activeStyle : navItemStyle}
+                                    title={isCollapsed ? "FAQ" : ''}
                                 >
-                                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                    <span style={{ fontSize: '1.2rem' }}>❓</span>
+                                    {!isCollapsed && <span>FAQ</span>}
+                                </Link>
+
+                                {!isCollapsed ? (
+                                    <>
+                                        <div
+                                            onClick={() => setHelpOpen(!helpOpen)}
+                                            style={{ ...navItemStyle, cursor: 'pointer', justifyContent: 'space-between' }}
+                                        >
+                                            <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                                <span style={{ fontSize: '1.2rem' }}>🆘</span>
+                                                <span>Help</span>
+                                            </div>
+                                            <span>{helpOpen ? '▾' : '▸'}</span>
+                                        </div>
+                                        {helpOpen && (
+                                            <div style={{ marginLeft: '1rem', borderLeft: '2px solid #eee' }}>
+                                                <Link to="/help/tech" style={{ padding: '0.5rem 1rem', color: 'hsl(215 15% 40%)', fontSize: '0.9rem', textDecoration: 'none', display: 'block' }}>Tech Support</Link>
+                                                <Link to="/help/hoa" style={{ padding: '0.5rem 1rem', color: 'hsl(215 15% 40%)', fontSize: '0.9rem', textDecoration: 'none', display: 'block' }}>HOA Team</Link>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <Link
+                                        to="/help/tech"
+                                        style={navItemStyle}
+                                        title="Help"
+                                    >
                                         <span style={{ fontSize: '1.2rem' }}>🆘</span>
-                                        <span>Help</span>
-                                    </div>
-                                    <span>{helpOpen ? '▾' : '▸'}</span>
-                                </div>
-                                {helpOpen && (
-                                    <div style={{ marginLeft: '1rem', borderLeft: '2px solid #eee' }}>
-                                        <Link to="/help/tech" style={{ padding: '0.5rem 1rem', color: 'hsl(215 15% 40%)', fontSize: '0.9rem', textDecoration: 'none', display: 'block' }}>Tech Support</Link>
-                                        <Link to="/help/hoa" style={{ padding: '0.5rem 1rem', color: 'hsl(215 15% 40%)', fontSize: '0.9rem', textDecoration: 'none', display: 'block' }}>HOA Team</Link>
-                                    </div>
+                                    </Link>
                                 )}
                             </>
-                        ) : (
-                            <Link
-                                to="/help/tech"
-                                style={navItemStyle}
-                                title="Help"
-                            >
-                                <span style={{ fontSize: '1.2rem' }}>🆘</span>
-                            </Link>
                         )}
 
                     </div>
@@ -215,19 +233,7 @@ export default function Sidebar() {
                             </button>
                         )}
                     </div>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {!isCollapsed ? (
-                            <>
-                                <button onClick={() => login('resident')} className="btn btn-primary" style={{ width: '100%', padding: '0.5rem', backgroundColor: '#0066cc', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', marginBottom: '0.25rem' }}>Login Resident</button>
-                                <button onClick={() => login('board')} className="btn" style={{ border: '1px solid #ddd', width: '100%', padding: '0.5rem', background: 'white', borderRadius: '4px', cursor: 'pointer', marginBottom: '0.25rem' }}>Login Board</button>
-                                <button onClick={() => login('management_company')} className="btn" style={{ border: '1px solid #ddd', width: '100%', padding: '0.5rem', background: 'white', borderRadius: '4px', cursor: 'pointer', marginBottom: '0.25rem', fontSize: '0.75rem' }}>Login Mgmt Co</button>
-                            </>
-                        ) : (
-                            <button onClick={() => login('resident')} style={{ fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Login">🔑</button>
-                        )}
-                    </div>
-                )}
+                ) : null}
             </div>
         </nav>
     );

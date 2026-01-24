@@ -1,58 +1,178 @@
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../config';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function ManageResidents() {
     const [showModal, setShowModal] = useState(false);
+    const [showResetModal, setShowResetModal] = useState(false);
+    const [resetPassword, setResetPassword] = useState('');
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    const [residents, setResidents] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         address: '',
         phone: '',
-        role_name: 'resident'
+        role_name: 'resident',
+        resident_type: 'owner', // 'owner' or 'tenant'
+        owner_type: 'individual' // 'individual' or 'business'
     });
+
+    const { user } = useAuth();
+    const isAdminOrBoard = user?.role === 'admin' || user?.role === 'board' || user?.role === 'super_admin';
 
     useEffect(() => {
         fetchResidents();
-    }, []);
+    }, [user]);
 
     const fetchResidents = () => {
         setLoading(true);
-        fetch(`${API_URL}/api/community/all-residents`)
+        setError('');
+        // Residents see directory (opt-in only), Admins see everyone
+        const endpoint = isAdminOrBoard
+            ? `${API_URL}/api/community/all-residents`
+            : `${API_URL}/api/community/directory`;
+
+        fetch(endpoint, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
+            }
+        })
             .then(res => res.json())
             .then(data => {
-                setResidents(data);
+                if (Array.isArray(data)) {
+                    setResidents(data);
+                } else {
+                    console.error("Fetch residents returned non-array:", data);
+                    setResidents([]);
+                }
                 setLoading(false);
             })
             .catch(err => {
                 console.error(err);
+                setError('Failed to load residents.');
                 setLoading(false);
             });
     };
 
     const handleCreate = async (e) => {
         e.preventDefault();
+        setError('');
         try {
-            const res = await fetch(`${API_URL}/api/community/residents`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+            const method = isEditing ? 'PUT' : 'POST';
+            const url = isEditing
+                ? `${API_URL}/api/community/residents/${editingId}`
+                : `${API_URL}/api/community/residents`;
+
+            const res = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
+                },
                 body: JSON.stringify(formData)
             });
             if (res.ok) {
                 setShowModal(false);
-                setFormData({ name: '', email: '', address: '', phone: '', role_name: 'resident' });
+                setFormData({ name: '', email: '', address: '', phone: '', role_name: 'resident', resident_type: 'owner', owner_type: 'individual' });
+                setIsEditing(false);
+                setEditingId(null);
                 fetchResidents();
-                alert('Resident created successfully!');
+                // success message could be a toast, but usually closing modal implies success
             } else {
                 const err = await res.json();
-                alert(`Error: ${err.detail}`);
+                setError(err.detail || 'Operation failed');
             }
         } catch (error) {
             console.error(error);
-            alert('Failed to connect to server');
+            setError('Failed to connect to server');
         }
     };
 
-    if (loading) return <div className="container">Loading...</div>;
+    const handleEdit = (resident) => {
+        setFormData({
+            name: resident.name,
+            email: resident.email,
+            address: resident.address,
+            phone: resident.phone || '',
+            role_name: 'resident', // Default, maybe should fetch?
+            resident_type: resident.resident_type || 'owner',
+            owner_type: resident.owner_type || 'individual',
+            is_active: resident.is_active
+        });
+        setEditingId(resident.id);
+        setIsEditing(true);
+        setShowModal(true);
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this resident?")) return;
+        setError('');
+
+        try {
+            const res = await fetch(`${API_URL}/api/community/residents/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
+                }
+            });
+            if (res.ok) {
+                fetchResidents();
+            } else {
+                const err = await res.json();
+                setError(err.detail || "Failed to delete");
+                // Since this error is on main page, we'll scroll to top
+                window.scrollTo(0, 0);
+            }
+        } catch (e) {
+            console.error(e);
+            setError("Error deleting resident");
+            window.scrollTo(0, 0);
+        }
+    };
+
+    const handleResetClick = (residentId) => {
+        setEditingId(residentId);
+        setResetPassword('');
+        setShowResetModal(true);
+    };
+
+    const handleResetSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+
+        try {
+            const res = await fetch(`${API_URL}/api/community/residents/${editingId}/reset-password`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
+                },
+                body: JSON.stringify({ new_password: resetPassword })
+            });
+
+            if (res.ok) {
+                setShowResetModal(false);
+                setResetPassword('');
+                setEditingId(null);
+                alert("Password reset successfully.");
+            } else {
+                const err = await res.json();
+                setError(err.detail || "Failed to reset password");
+            }
+        } catch (err) {
+            console.error(err);
+            setError("Error resetting password");
+        }
+    };
+
+    // Checking if backend returns is_active. 
+    // DirectoryProfile in backend MUST include is_active field for this to work.
+    // Let me verify backend/community/router.py DirectoryProfile model.
 
     const PreferenceIcon = ({ type, email, paper }) => {
         return (
@@ -68,11 +188,31 @@ export default function ManageResidents() {
     return (
         <div className="container">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h1 style={{ margin: 0 }}>Manage Residents</h1>
-                <button onClick={() => setShowModal(true)} className="btn btn-primary">
-                    + Add Resident
-                </button>
+                <h1 style={{ margin: 0 }}>{isAdminOrBoard ? 'Manage Residents' : 'Resident Directory'}</h1>
+                {isAdminOrBoard && (
+                    <button onClick={() => {
+                        setIsEditing(false);
+                        setFormData({ name: '', email: '', address: '', phone: '', role_name: 'resident', resident_type: 'owner', owner_type: 'individual' });
+                        setError('');
+                        setShowModal(true);
+                    }} className="btn btn-primary">
+                        + Add Resident
+                    </button>
+                )}
             </div>
+
+            {error && !showModal && (
+                <div style={{
+                    padding: '1rem',
+                    backgroundColor: '#f8d7da',
+                    color: '#721c24',
+                    borderRadius: '0.5rem',
+                    marginBottom: '1rem',
+                    border: '1px solid #f5c6cb'
+                }}>
+                    {error}
+                </div>
+            )}
 
             {showModal && (
                 <div style={{
@@ -80,7 +220,21 @@ export default function ManageResidents() {
                     backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
                 }}>
                     <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '0.5rem', width: '400px', maxWidth: '90%' }}>
-                        <h2 style={{ marginTop: 0 }}>Add New Resident</h2>
+                        <h2 style={{ marginTop: 0 }}>{isEditing ? 'Edit Resident' : 'Add New Resident'}</h2>
+
+                        {error && (
+                            <div style={{
+                                padding: '0.75rem',
+                                backgroundColor: '#f8d7da',
+                                color: '#721c24',
+                                borderRadius: '0.25rem',
+                                marginBottom: '1rem',
+                                fontSize: '0.9rem'
+                            }}>
+                                {error}
+                            </div>
+                        )}
+
                         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Name</label>
@@ -114,9 +268,89 @@ export default function ManageResidents() {
                                     value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })}
                                 />
                             </div>
+
+                            {/* Resident Type */}
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Resident Type</label>
+                                <select
+                                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                                    value={formData.resident_type}
+                                    onChange={e => setFormData({ ...formData, resident_type: e.target.value })}
+                                >
+                                    <option value="owner">Owner</option>
+                                    <option value="tenant">Tenant</option>
+                                </select>
+                            </div>
+
+                            {/* Owner Type - Conditional */}
+                            {formData.resident_type === 'owner' && (
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Owner Type</label>
+                                    <div style={{ display: 'flex', gap: '1rem' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <input
+                                                type="radio"
+                                                name="owner_type"
+                                                value="individual"
+                                                checked={formData.owner_type === 'individual'}
+                                                onChange={e => setFormData({ ...formData, owner_type: e.target.value })}
+                                            /> Individual
+                                        </label>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <input
+                                                type="radio"
+                                                name="owner_type"
+                                                value="business"
+                                                checked={formData.owner_type === 'business'}
+                                                onChange={e => setFormData({ ...formData, owner_type: e.target.value })}
+                                            /> Business
+                                        </label>
+                                    </div>
+                                </div>
+                            )}
+
+                            {isEditing && (
+                                <div>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '500', cursor: 'pointer', color: formData.is_active === false ? 'red' : 'green' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.is_active !== false} // Default to true if undefined
+                                            onChange={e => setFormData({ ...formData, is_active: e.target.checked })}
+                                        />
+                                        {formData.is_active === false ? 'Account Deactivated' : 'Account Active'}
+                                    </label>
+                                </div>
+                            )}
+
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Create</button>
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{isEditing ? 'Update' : 'Create'}</button>
                                 <button type="button" onClick={() => setShowModal(false)} className="btn" style={{ flex: 1, border: '1px solid #ccc' }}>Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {showResetModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
+                }}>
+                    <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '0.5rem', width: '350px', maxWidth: '90%' }}>
+                        <h2 style={{ marginTop: 0 }}>Reset Password</h2>
+                        <form onSubmit={handleResetSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>New Password</label>
+                                <input
+                                    type="text" required
+                                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                                    value={resetPassword} onChange={e => setResetPassword(e.target.value)}
+                                    placeholder="Enter new password"
+                                />
+                            </div>
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Reset</button>
+                                <button type="button" onClick={() => setShowResetModal(false)} className="btn" style={{ flex: 1, border: '1px solid #ccc' }}>Cancel</button>
                             </div>
                         </form>
                     </div>
@@ -130,11 +364,13 @@ export default function ManageResidents() {
                             <th style={{ padding: '1rem', color: '#666' }}>Name</th>
                             <th style={{ padding: '1rem', color: '#666' }}>Contact</th>
                             <th style={{ padding: '1rem', color: '#666' }}>Communication Preferences</th>
-                            <th style={{ padding: '1rem', color: '#666', textAlign: 'center' }}>Mgmt Notif.</th>
+                            <th style={{ padding: '1rem', color: '#666' }}>Type</th>
+                            <th style={{ padding: '1rem', color: '#666' }}>Status</th>
+                            {isAdminOrBoard && <th style={{ padding: '1rem', color: '#666', textAlign: 'center' }}>Actions</th>}
                         </tr>
                     </thead>
                     <tbody>
-                        {residents.map(resident => (
+                        {Array.isArray(residents) && residents.map(resident => (
                             <tr key={resident.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                 <td style={{ padding: '1rem' }}>
                                     <div style={{ fontWeight: '600', color: 'hsl(215 25% 27%)' }}>{resident.name}</div>
@@ -156,9 +392,59 @@ export default function ManageResidents() {
                                         <span style={{ color: '#999', fontStyle: 'italic' }}>Not set</span>
                                     )}
                                 </td>
-                                <td style={{ padding: '1rem', textAlign: 'center' }}>
-                                    {resident.preferences?.mgmt_committee_notifications ? '✅' : '❌'}
+                                <td style={{ padding: '1rem' }}>
+                                    <div style={{ textTransform: 'capitalize', fontWeight: '500' }}>
+                                        {resident.resident_type || 'Owner'}
+                                    </div>
+                                    {resident.resident_type === 'owner' && resident.owner_type && (
+                                        <div style={{ fontSize: '0.8rem', color: '#888', textTransform: 'capitalize' }}>
+                                            ({resident.owner_type})
+                                        </div>
+                                    )}
                                 </td>
+                                <td style={{ padding: '1rem' }}>
+                                    {resident.is_active === false ? (
+                                        <span style={{
+                                            backgroundColor: '#fde2e2',
+                                            color: '#9b1c1c',
+                                            padding: '0.25rem 0.5rem',
+                                            borderRadius: '9999px',
+                                            fontSize: '0.75rem',
+                                            fontWeight: '500'
+                                        }}>
+                                            Deactivated
+                                        </span>
+                                    ) : resident.is_setup_complete ? (
+                                        <span style={{
+                                            backgroundColor: '#def7ec',
+                                            color: '#03543f',
+                                            padding: '0.25rem 0.5rem',
+                                            borderRadius: '9999px',
+                                            fontSize: '0.75rem',
+                                            fontWeight: '500'
+                                        }}>
+                                            Active
+                                        </span>
+                                    ) : (
+                                        <span style={{
+                                            backgroundColor: '#fef3c7',
+                                            color: '#92400e',
+                                            padding: '0.25rem 0.5rem',
+                                            borderRadius: '9999px',
+                                            fontSize: '0.75rem',
+                                            fontWeight: '500'
+                                        }}>
+                                            Pending Setup
+                                        </span>
+                                    )}
+                                </td>
+                                {isAdminOrBoard && (
+                                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                        <button onClick={() => handleEdit(resident)} className="btn" style={{ padding: '0.25rem 0.5rem', marginRight: '0.5rem' }}>Edit</button>
+                                        <button onClick={() => handleResetClick(resident.id)} className="btn" style={{ padding: '0.25rem 0.5rem', marginRight: '0.5rem', backgroundColor: '#e2e8f0', color: '#1e293b' }}>Reset Pwd</button>
+                                        <button onClick={() => handleDelete(resident.id)} className="btn" style={{ padding: '0.25rem 0.5rem', color: 'red', borderColor: 'red' }}>Delete</button>
+                                    </td>
+                                )}
                             </tr>
                         ))}
                     </tbody>

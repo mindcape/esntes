@@ -13,12 +13,10 @@ export default function AdminDashboard() {
     const [formData, setFormData] = useState({
         name: '',
         address: '',
-        units_count: 0
+        units_count: 0,
+        community_code: ''
     });
 
-    const [selectedCommunity, setSelectedCommunity] = useState(null);
-    const [settingsModalOpen, setSettingsModalOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState('general');
 
     useEffect(() => {
         if (user && user.role === 'super_admin') {
@@ -46,6 +44,21 @@ export default function AdminDashboard() {
         );
     }
 
+    // ... inside AdminDashboard component
+    const [error, setError] = useState(null);
+    const [success, setSuccess] = useState(null);
+
+    // Auto-dismiss notifications
+    useEffect(() => {
+        if (error || success) {
+            const timer = setTimeout(() => {
+                setError(null);
+                setSuccess(null);
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [error, success]);
+
     const fetchCommunities = () => {
         setLoading(true);
         fetch(`${API_URL}/api/admin/communities`)
@@ -69,6 +82,8 @@ export default function AdminDashboard() {
 
     const handleCreate = async (e) => {
         e.preventDefault();
+        setError(null);
+        setSuccess(null);
         try {
             const res = await fetch(`${API_URL}/api/admin/communities`, {
                 method: 'POST',
@@ -77,65 +92,17 @@ export default function AdminDashboard() {
             });
             if (res.ok) {
                 setShowModal(false);
-                setFormData({ name: '', address: '', units_count: 0 });
+                setFormData({ name: '', address: '', units_count: 0, community_code: '' });
                 fetchCommunities();
-                alert('Community created successfully!');
+                setSuccess('Community created successfully!');
             } else {
                 const err = await res.json();
-                alert(`Error: ${err.detail}`);
+                setError(`Error: ${err.detail}`);
             }
         } catch (error) {
             console.error(error);
-            alert('Failed to connect to server');
+            setError('Failed to connect to server');
         }
-    };
-
-    const handleManage = (community) => {
-        setSelectedCommunity({
-            ...community,
-            modules_enabled: community.modules_enabled || {
-                finance: true, arc: true, voting: true, violations: true, documents: true, calendar: true
-            },
-            branding_settings: community.branding_settings || { primary_color: '#0066cc', welcome_msg: '' }
-        });
-        setSettingsModalOpen(true);
-    };
-
-    const handleUpdate = async (e) => {
-        e.preventDefault();
-        try {
-            const res = await fetch(`${API_URL}/api/admin/communities/${selectedCommunity.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: selectedCommunity.name,
-                    subdomain: selectedCommunity.subdomain,
-                    branding_settings: selectedCommunity.branding_settings,
-                    modules_enabled: selectedCommunity.modules_enabled
-                })
-            });
-            if (res.ok) {
-                setSettingsModalOpen(false);
-                fetchCommunities();
-                alert('Community updated successfully!');
-            } else {
-                const err = await res.json();
-                alert(`Error: ${err.detail}`);
-            }
-        } catch (error) {
-            console.error(error);
-            alert('Failed to update settings');
-        }
-    };
-
-    const toggleModule = (moduleKey) => {
-        setSelectedCommunity(prev => ({
-            ...prev,
-            modules_enabled: {
-                ...prev.modules_enabled,
-                [moduleKey]: !prev.modules_enabled[moduleKey]
-            }
-        }));
     };
 
     if (loading) return <div className="container">Loading...</div>;
@@ -151,6 +118,18 @@ export default function AdminDashboard() {
                     + Onboard New Community
                 </button>
             </div>
+
+            {/* Inline Notifications */}
+            {error && (
+                <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '4px', border: '1px solid #fecaca' }}>
+                    {error}
+                </div>
+            )}
+            {success && (
+                <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#dcfce7', color: '#16a34a', borderRadius: '4px', border: '1px solid #bbf7d0' }}>
+                    {success}
+                </div>
+            )}
 
             {/* Metrics */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
@@ -168,7 +147,16 @@ export default function AdminDashboard() {
             <h2 style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Active Communities</h2>
             <div className="card" style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    {/* ... (keep thead) ... */}
+                    <thead>
+                        <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #eee' }}>
+                            <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#555' }}>ID</th>
+                            <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#555' }}>Name</th>
+                            <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#555' }}>Address</th>
+                            <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#555' }}>Units</th>
+                            <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#555' }}>Subdomain</th>
+                            <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#555' }}>Actions</th>
+                        </tr>
+                    </thead>
                     <tbody>
                         {communities.length === 0 ? (
                             <tr>
@@ -204,33 +192,137 @@ export default function AdminDashboard() {
                     }}>
                         <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '0.5rem', width: '400px', maxWidth: '90%' }}>
                             <h2 style={{ marginTop: 0 }}>Onboard New Community</h2>
-                            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+                            {/* Modal-specific Error (in case creation fails while modal is open) */}
+                            {error && <div style={{ marginBottom: '1rem', color: '#dc2626', fontSize: '0.9rem' }}>{error}</div>}
+
+                            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '80vh', overflowY: 'auto' }}>
+                                {/* Section 1: Community Details */}
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Community Name</label>
-                                    <input
-                                        type="text" required placeholder="e.g. Pine Valley HOA"
-                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
-                                        value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                    />
+                                    <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', borderBottom: '1px solid #eee', paddingBottom: '0.25rem' }}>Community Details</h3>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Community Name</label>
+                                            <input
+                                                type="text" required placeholder="e.g. Pine Valley HOA"
+                                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                                                value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Community Code</label>
+                                            <input
+                                                type="text" required placeholder="e.g. PVH123"
+                                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                                                value={formData.community_code} onChange={e => setFormData({ ...formData, community_code: e.target.value })}
+                                            />
+                                            <small style={{ color: '#666', fontSize: '0.75rem' }}>Unique code for residents.</small>
+                                        </div>
+                                    </div>
+                                    <div style={{ marginTop: '0.5rem' }}>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Total Units</label>
+                                        <input
+                                            type="number" required min="1"
+                                            style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                                            value={formData.units_count} onChange={e => setFormData({ ...formData, units_count: parseInt(e.target.value) })}
+                                        />
+                                    </div>
                                 </div>
+
+                                {/* Section 2: Address */}
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Address</label>
-                                    <input
-                                        type="text" required placeholder="e.g. 100 Pine Valley Dr"
-                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
-                                        value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })}
-                                    />
+                                    <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', borderBottom: '1px solid #eee', paddingBottom: '0.25rem' }}>Location</h3>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: '500' }}>Address Line 1</label>
+                                            <input
+                                                type="text" required placeholder="Street Address"
+                                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                                                value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: '500' }}>Address Line 2</label>
+                                            <input
+                                                type="text" placeholder="Suite, Bldg, etc. (Optional)"
+                                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                                                value={formData.address2 || ''} onChange={e => setFormData({ ...formData, address2: e.target.value })}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: '500' }}>City</label>
+                                                <input
+                                                    type="text" required
+                                                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                                                    value={formData.city || ''} onChange={e => setFormData({ ...formData, city: e.target.value })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: '500' }}>State</label>
+                                                <input
+                                                    type="text" required
+                                                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                                                    value={formData.state || ''} onChange={e => setFormData({ ...formData, state: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: '500' }}>County</label>
+                                                <input
+                                                    type="text"
+                                                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                                                    value={formData.county || ''} onChange={e => setFormData({ ...formData, county: e.target.value })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: '500' }}>Zip Code</label>
+                                                <input
+                                                    type="text" required
+                                                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                                                    value={formData.zip_code || ''} onChange={e => setFormData({ ...formData, zip_code: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
+
+                                {/* Section 3: Point of Contact */}
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Number of Units</label>
-                                    <input
-                                        type="number" required min="1"
-                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
-                                        value={formData.units_count} onChange={e => setFormData({ ...formData, units_count: parseInt(e.target.value) })}
-                                    />
+                                    <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', borderBottom: '1px solid #eee', paddingBottom: '0.25rem' }}>Point of Contact</h3>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: '500' }}>Full Name</label>
+                                            <input
+                                                type="text" required placeholder="Manager or Board President"
+                                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                                                value={formData.poc_name || ''} onChange={e => setFormData({ ...formData, poc_name: e.target.value })}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: '500' }}>Email</label>
+                                                <input
+                                                    type="email" required
+                                                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                                                    value={formData.poc_email || ''} onChange={e => setFormData({ ...formData, poc_email: e.target.value })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: '500' }}>Phone</label>
+                                                <input
+                                                    type="tel" required
+                                                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                                                    value={formData.poc_phone || ''} onChange={e => setFormData({ ...formData, poc_phone: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Create</button>
+
+                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #eee' }}>
+                                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Create Community</button>
                                     <button type="button" onClick={() => setShowModal(false)} className="btn" style={{ flex: 1, border: '1px solid #ccc' }}>Cancel</button>
                                 </div>
                             </form>
@@ -240,4 +332,5 @@ export default function AdminDashboard() {
             }
         </div >
     );
+
 }

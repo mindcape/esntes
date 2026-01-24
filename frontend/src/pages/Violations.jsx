@@ -1,44 +1,81 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
+// ... (imports remain)
 export default function Violations() {
+    const { user } = useAuth();
     const [violations, setViolations] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [success, setSuccess] = useState(null);
 
     useEffect(() => {
         fetchViolations();
-    }, []);
+    }, [user]); // Add user dependency
+
+    // Auto-dismiss notifications
+    useEffect(() => {
+        if (error || success) {
+            const timer = setTimeout(() => {
+                setError(null);
+                setSuccess(null);
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [error, success]);
 
     const fetchViolations = () => {
-        fetch(`${API_URL}/api/violations/my`)
+        // Ensure user is loaded
+        if (!user?.community_id) return;
+
+        const token = localStorage.getItem('esntes_token');
+
+        fetch(`${API_URL}/api/communities/${user.community_id}/violations/my`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
             .then(res => res.json())
             .then(data => {
-                setViolations(data);
+                if (Array.isArray(data)) {
+                    setViolations(data);
+                } else {
+                    setViolations([]);
+                }
                 setLoading(false);
             })
             .catch(err => {
                 console.error(err);
+                setError("Failed to load violations.");
+                setViolations([]);
                 setLoading(false);
             });
     };
 
     const handlePayFine = async (violationId, amount) => {
-        if (!confirm(`Pay fine of $${amount.toFixed(2)}?`)) return;
+        if (!window.confirm(`Pay fine of $${amount.toFixed(2)}?`)) return;
+        setError(null);
+        setSuccess(null);
 
         try {
-            const res = await fetch(`${API_URL}/api/violations/${violationId}/pay`, {
-                method: 'POST'
+            const token = localStorage.getItem('esntes_token');
+            const res = await fetch(`${API_URL}/api/communities/${user.community_id}/violations/${violationId}/pay`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
             });
             if (res.ok) {
-                alert('Fine paid successfully!');
+                setSuccess('Fine paid successfully!');
                 fetchViolations();
             } else {
                 const error = await res.json();
-                alert(error.detail || 'Failed to pay fine.');
+                setError(error.detail || 'Failed to pay fine.');
             }
         } catch (err) {
             console.error(err);
-            alert('Error processing payment.');
+            setError('Error processing payment.');
         }
     };
 
@@ -58,6 +95,18 @@ export default function Violations() {
     return (
         <div className="container">
             <h1 style={{ marginBottom: '2rem' }}>My Violations</h1>
+
+            {/* Inline Notifications */}
+            {error && (
+                <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '4px', border: '1px solid #fecaca' }}>
+                    {error}
+                </div>
+            )}
+            {success && (
+                <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#dcfce7', color: '#16a34a', borderRadius: '4px', border: '1px solid #bbf7d0' }}>
+                    {success}
+                </div>
+            )}
 
             {violations.length === 0 ? (
                 <div className="card" style={{ textAlign: 'center', padding: '3rem', color: '#999' }}>

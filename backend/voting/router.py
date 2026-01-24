@@ -4,22 +4,32 @@ from typing import List
 from datetime import datetime
 from backend.core.database import get_db
 from backend.voting import models, schemas
+from backend.auth.models import User
+from backend.auth.dependencies import get_current_user
 
 router = APIRouter()
 
 # --- Elections ---
 
 @router.get("/", response_model=List[schemas.Election])
-async def get_elections(user_id: int = 1, db: Session = Depends(get_db)):
-    """Get all elections. In a real app, user_id comes from auth token."""
-    elections = db.query(models.Election).order_by(models.Election.start_date.desc()).all()
+async def get_elections(
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    """Get all elections for the current user's community."""
+    if not current_user.community_id:
+        return []
+
+    elections = db.query(models.Election).filter(
+        models.Election.community_id == current_user.community_id
+    ).order_by(models.Election.start_date.desc()).all()
     
     # Check if user has voted for each election
     results = []
     for election in elections:
         voter_record = db.query(models.VoterRecord).filter(
             models.VoterRecord.election_id == election.id,
-            models.VoterRecord.user_id == user_id
+            models.VoterRecord.user_id == current_user.id
         ).first()
         
         election_data = schemas.Election.from_orm(election)
@@ -34,8 +44,15 @@ async def get_elections(user_id: int = 1, db: Session = Depends(get_db)):
     return results
 
 @router.post("/", response_model=schemas.Election)
-async def create_election(election: schemas.ElectionCreate, db: Session = Depends(get_db)):
+async def create_election(
+    election: schemas.ElectionCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Create a new election with candidates (Board Only)"""
+    if not current_user.community_id:
+         raise HTTPException(status_code=400, detail="User context missing community")
+
     new_election = models.Election(
         title=election.title,
         description=election.description,
@@ -43,7 +60,8 @@ async def create_election(election: schemas.ElectionCreate, db: Session = Depend
         end_date=election.end_date,
         is_active=election.is_active,
         election_type=election.election_type,
-        allowed_selections=election.allowed_selections
+        allowed_selections=election.allowed_selections,
+        community_id=current_user.community_id
     )
     db.add(new_election)
     db.commit()
@@ -63,7 +81,11 @@ async def create_election(election: schemas.ElectionCreate, db: Session = Depend
     return new_election
 
 @router.post("/{election_id}/end")
-async def end_election(election_id: int, user_id: int = 1, db: Session = Depends(get_db)):
+async def end_election(
+    election_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """End an election immediately (Board Only - user_id check mocked)."""
     # In real app verify user.role == 'board'
     
@@ -80,10 +102,17 @@ async def end_election(election_id: int, user_id: int = 1, db: Session = Depends
 # --- Voting ---
 
 @router.post("/vote")
-async def cast_vote(vote: schemas.VoteCreate, user_id: int = 1, db: Session = Depends(get_db)):
-    """Cast a vote for candidate(s). user_id should come from auth."""
-    # 1. Check if election is active
-    election = db.query(models.Election).filter(models.Election.id == vote.election_id).first()
+async def cast_vote(
+    vote: schemas.VoteCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Cast a vote for candidate(s)."""
+    # 1. Check if election is active & belongs to community
+    election = db.query(models.Election).filter(
+        models.Election.id == vote.election_id,
+        models.Election.community_id == current_user.community_id # Security Check
+    ).first()
     if not election:
         raise HTTPException(status_code=404, detail="Election not found")
     
@@ -94,7 +123,7 @@ async def cast_vote(vote: schemas.VoteCreate, user_id: int = 1, db: Session = De
     # 2. Check if user already voted
     existing_record = db.query(models.VoterRecord).filter(
         models.VoterRecord.election_id == vote.election_id,
-        models.VoterRecord.user_id == user_id
+        models.VoterRecord.user_id == current_user.id
     ).first()
     
     if existing_record:
@@ -118,7 +147,7 @@ async def cast_vote(vote: schemas.VoteCreate, user_id: int = 1, db: Session = De
     # 5. Record the participation (Linked to user)
     voter_record = models.VoterRecord(
         election_id=vote.election_id,
-        user_id=user_id
+        user_id=current_user.id
     )
     db.add(voter_record)
     

@@ -3,34 +3,82 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
+// ... (imports)
+
 export default function Directory() {
     const { user } = useAuth();
     const [profiles, setProfiles] = useState([]);
     const [board, setBoard] = useState([]);
     const [optedIn, setOptedIn] = useState(false);
+    const [error, setError] = useState(null);
+    const [success, setSuccess] = useState(null);
 
     useEffect(() => {
-        fetch(`${API_URL}/api/community/directory`)
+        let isMounted = true;
+        const token = localStorage.getItem('esntes_token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+        // Auto-dismiss notifications
+        if (error || success) {
+            const timer = setTimeout(() => {
+                setError(null);
+                setSuccess(null);
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+
+        fetch(`${API_URL}/api/community/directory`, { headers })
             .then(res => res.json())
             .then(data => {
-                setProfiles(data);
-                setOptedIn(data.some(p => p.id === user?.id));
+                if (isMounted && Array.isArray(data)) {
+                    setProfiles(data);
+                    setOptedIn(data.some(p => p.id === user?.id));
+                }
             })
             .catch(console.error);
 
-        fetch(`${API_URL}/api/community-info/board`)
+        fetch(`${API_URL}/api/community-info/board`, { headers })
             .then(res => res.json())
-            .then(setBoard)
+            .then(data => { if (isMounted) setBoard(data); })
             .catch(console.error);
-    }, [user]);
+
+        return () => { isMounted = false; };
+    }, [user, error, success]);
 
     const toggleOptIn = async () => {
+        setError(null);
+        setSuccess(null);
         const newStatus = !optedIn;
-        setOptedIn(newStatus);
-        if (newStatus) {
-            alert("You have opted IN to the directory. Neighbors can now see your profile.");
-        } else {
-            alert("You have opted OUT. You are hidden.");
+        const token = localStorage.getItem('esntes_token');
+
+        try {
+            const res = await fetch(`${API_URL}/api/community/directory/opt-in?status=${newStatus}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (res.ok) {
+                setOptedIn(newStatus);
+                if (newStatus) {
+                    // Refetch to see self
+                    const dirRes = await fetch(`${API_URL}/api/community/directory`, { headers: { 'Authorization': `Bearer ${token}` } });
+                    const dirData = await dirRes.json();
+                    setProfiles(dirData);
+                    setSuccess("You have opted IN. Neighbors can now see your profile.");
+                } else {
+                    // Filter self out locally
+                    setProfiles(prev => prev.filter(p => p.id !== user.id));
+                    setSuccess("You have opted OUT. You are hidden from the directory.");
+                }
+            } else {
+                setError("Failed to update status. Please try again.");
+            }
+        } catch (err) {
+            console.error(err);
+            setError("Error connecting to server.");
         }
     };
 
@@ -54,8 +102,36 @@ export default function Directory() {
     return (
         <div className="container">
             <Link to="/" style={{ display: 'inline-block', marginBottom: '1rem', color: '#666', fontSize: '0.9rem' }}>← Back to Dashboard</Link>
-            <div className="header">
-                <h1>Resident Directory</h1>
+
+            {/* Inline Notifications */}
+            {error && (
+                <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '4px', border: '1px solid #fecaca' }}>
+                    {error}
+                </div>
+            )}
+            {success && (
+                <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#dcfce7', color: '#16a34a', borderRadius: '4px', border: '1px solid #bbf7d0' }}>
+                    {success}
+                </div>
+            )}
+
+            <div className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <h1>Resident Directory</h1>
+                    {(user?.role === 'board' || user?.role === 'admin') && (
+                        <Link
+                            to="/board/residents"
+                            className="btn btn-primary"
+                            style={{
+                                padding: '0.5rem 1rem',
+                                fontSize: '0.9rem',
+                                textDecoration: 'none'
+                            }}
+                        >
+                            Manage Residents
+                        </Link>
+                    )}
+                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <span style={{ fontSize: '0.9rem', color: '#666' }}>Show my profile:</span>
                     <button

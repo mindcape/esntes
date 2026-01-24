@@ -25,6 +25,7 @@ export default function CreateElection() {
             { name: '', bio: '', photo_url: '' } // Start with 2 empty candidates
         ]
     });
+    const [error, setError] = useState('');
 
     const handleMetaChange = (e) => {
         const { name, value } = e.target;
@@ -52,17 +53,20 @@ export default function CreateElection() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
 
         // Basic Validation
         if (!formData.title || !formData.start_date || !formData.end_date) {
-            alert('Please fill in all election details.');
+            setError('Please fill in all election details.');
+            window.scrollTo(0, 0);
             return;
         }
 
         // Validate candidates
         const validCandidates = formData.candidates.filter(c => c.name.trim() !== '');
         if (validCandidates.length < 2) {
-            alert('Please provide at least 2 valid candidates.');
+            setError('Please provide at least 2 valid candidates.');
+            window.scrollTo(0, 0);
             return;
         }
 
@@ -70,13 +74,15 @@ export default function CreateElection() {
             const payload = {
                 ...formData,
                 candidates: validCandidates,
-                // Ensure dates are ISO strings if needed, input type='datetime-local' gives 'YYYY-MM-DDTHH:mm'
-                // Backend expects Pydantic datetime compatibility.
             };
 
+            const token = localStorage.getItem('esntes_token');
             const res = await fetch(`${API_URL}/api/voting/`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify(payload)
             });
 
@@ -84,11 +90,13 @@ export default function CreateElection() {
                 navigate('/elections');
             } else {
                 const err = await res.json();
-                alert(err.detail || 'Failed to create election');
+                setError(err.detail || 'Failed to create election');
+                window.scrollTo(0, 0);
             }
         } catch (err) {
             console.error(err);
-            alert('Error creating election');
+            setError('Error creating election');
+            window.scrollTo(0, 0);
         }
     };
 
@@ -100,6 +108,19 @@ export default function CreateElection() {
 
             <div className="card">
                 <h1 style={{ marginBottom: '1.5rem' }}>Create New Election</h1>
+
+                {error && (
+                    <div style={{
+                        padding: '0.75rem',
+                        backgroundColor: '#f8d7da',
+                        color: '#721c24',
+                        borderRadius: '0.25rem',
+                        marginBottom: '1rem',
+                        border: '1px solid #f5c6cb'
+                    }}>
+                        {error}
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit}>
                     {/* Election Metadata */}

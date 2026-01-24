@@ -9,12 +9,16 @@ export default function Elections() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        const token = localStorage.getItem('token');
         fetch(`${API_URL}/api/voting/`, {
-            // In real app add auth headers
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
         })
             .then(res => res.json())
             .then(data => {
-                setElections(data);
+                if (Array.isArray(data)) setElections(data);
+                else setElections([]);
                 setLoading(false);
             })
             .catch(err => {

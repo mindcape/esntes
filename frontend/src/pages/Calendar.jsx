@@ -8,13 +8,16 @@ export default function Calendar() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState(null);
+    const [error, setError] = useState('');
     const [formData, setFormData] = useState({
         title: '',
         description: '',
         event_type: 'Meeting',
         start_date: '',
         end_date: '',
-        location: ''
+        location: '',
+        recurrence_rule: '',
+        recurrence_end_date: ''
     });
 
     useEffect(() => {
@@ -22,47 +25,86 @@ export default function Calendar() {
     }, []);
 
     const fetchEvents = () => {
-        fetch(`${API_URL}/api/calendar/events`)
+        if (!user?.community_id) return;
+        setLoading(true);
+        // NEW NESTED ENDPOINT
+        fetch(`${API_URL}/api/communities/${user.community_id}/events`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
+            }
+        })
             .then(res => res.json())
             .then(data => {
-                setEvents(data);
+                if (Array.isArray(data)) {
+                    const formattedEvents = data.map(event => ({
+                        ...event,
+                        start: new Date(event.start_date),
+                        end: new Date(event.end_date),
+                    }));
+                    setEvents(formattedEvents);
+                } else {
+                    setEvents([]);
+                    console.error("Unexpected API response:", data);
+                }
                 setLoading(false);
             })
             .catch(err => {
-                console.error(err);
+                console.error("Error fetching events:", err);
                 setLoading(false);
             });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
 
         // Validation
         if (!formData.title || !formData.title.trim()) {
-            alert('Event title is required.');
+            setError('Event title is required.');
             return;
         }
 
         if (!formData.start_date || !formData.end_date) {
-            alert('Start and end dates are required.');
+            setError('Start and end dates are required.');
             return;
         }
 
         // Validate end date is after start date
         if (new Date(formData.end_date) <= new Date(formData.start_date)) {
-            alert('End date must be after start date.');
+            setError('End date must be after start date.');
             return;
         }
 
+        const payload = { ...formData };
+        if (!payload.recurrence_rule) {
+            payload.recurrence_rule = null;
+            payload.recurrence_end_date = null;
+        } else if (!payload.recurrence_end_date) {
+            setError('Please select an end date for the recurrence.');
+            return;
+        } else {
+            // Ensure it's a datetime string for Pydantic (append end of day time)
+            payload.recurrence_end_date = new Date(payload.recurrence_end_date + 'T23:59:59').toISOString();
+        }
+
         try {
+            // NEW NESTED ENDPOINT
             const url = selectedEvent
-                ? `${API_URL}/api/calendar/events/${selectedEvent.id}`
-                : `${API_URL}/api/calendar/events`;
+                ? `${API_URL}/api/communities/${user.community_id}/events/${selectedEvent.id}`
+                : `${API_URL}/api/communities/${user.community_id}/events`;
 
             const res = await fetch(url, {
                 method: selectedEvent ? 'PUT' : 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('esntes_token')}` // Auth for admin check
+                },
+                body: JSON.stringify({
+                    ...payload,
+                    // Ensure dates are sent as ISO strings
+                    start_date: new Date(payload.start_date).toISOString(),
+                    end_date: new Date(payload.end_date).toISOString()
+                })
             });
 
             if (res.ok) {
@@ -74,16 +116,18 @@ export default function Calendar() {
                     event_type: 'Meeting',
                     start_date: '',
                     end_date: '',
-                    location: ''
+                    location: '',
+                    recurrence_rule: '',
+                    recurrence_end_date: ''
                 });
                 fetchEvents();
             } else {
                 const error = await res.json();
-                alert(error.detail || 'Failed to save event.');
+                setError(error.detail || 'Failed to save event.');
             }
         } catch (err) {
             console.error(err);
-            alert('Error saving event.');
+            setError('Error saving event.');
         }
     };
 
@@ -93,27 +137,37 @@ export default function Calendar() {
             title: event.title,
             description: event.description || '',
             event_type: event.event_type,
+            // Format dates for input[type="datetime-local"] (YYYY-MM-DDTHH:mm)
             start_date: new Date(event.start_date).toISOString().slice(0, 16),
             end_date: new Date(event.end_date).toISOString().slice(0, 16),
-            location: event.location || ''
+            location: event.location || '',
+            recurrence_rule: event.recurrence_rule || '',
+            recurrence_end_date: event.recurrence_end_date ? new Date(event.recurrence_end_date).toISOString().slice(0, 10) : ''
         });
         setShowModal(true);
     };
 
     const handleDelete = async (eventId) => {
         if (!confirm('Are you sure you want to delete this event?')) return;
+        setError('');
 
         try {
-            const res = await fetch(`${API_URL}/api/calendar/events/${eventId}`, {
-                method: 'DELETE'
+            // NEW NESTED ENDPOINT
+            const res = await fetch(`${API_URL}/api/communities/${user.community_id}/events/${eventId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('esntes_token')}` }
             });
 
             if (res.ok) {
                 fetchEvents();
+            } else {
+                setError('Failed to delete event.');
+                window.scrollTo(0, 0);
             }
         } catch (err) {
             console.error(err);
-            alert('Error deleting event.');
+            setError('Error deleting event.');
+            window.scrollTo(0, 0);
         }
     };
 
@@ -142,16 +196,31 @@ export default function Calendar() {
 
     if (loading) return <div className="container">Loading...</div>;
 
+    const canEdit = user?.role === 'board' || user?.role === 'admin';
+
     return (
         <div className="container">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <h1>Community Calendar</h1>
-                {user?.role === 'board' && (
-                    <button onClick={() => { setSelectedEvent(null); setShowModal(true); }} className="btn btn-primary">
+                {canEdit && (
+                    <button onClick={() => { setSelectedEvent(null); setError(''); setShowModal(true); }} className="btn btn-primary">
                         + Add Event
                     </button>
                 )}
             </div>
+
+            {error && !showModal && (
+                <div style={{
+                    padding: '1rem',
+                    backgroundColor: '#f8d7da',
+                    color: '#721c24',
+                    borderRadius: '0.5rem',
+                    marginBottom: '1rem',
+                    border: '1px solid #f5c6cb'
+                }}>
+                    {error}
+                </div>
+            )}
 
             <div style={{ display: 'grid', gap: '1rem' }}>
                 {events.length === 0 ? (
@@ -184,16 +253,21 @@ export default function Calendar() {
                                 <div style={{ flex: 1 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
                                         <h3 style={{ margin: 0 }}>{event.title}</h3>
-                                        <span style={{
-                                            fontSize: '0.75rem',
-                                            padding: '0.25rem 0.75rem',
-                                            borderRadius: '1rem',
-                                            backgroundColor: getEventColor(event.event_type),
-                                            color: 'white',
-                                            fontWeight: 'bold'
-                                        }}>
-                                            {event.event_type}
-                                        </span>
+                                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                            {event.recurrence_rule && (
+                                                <span title={`Repeats ${event.recurrence_rule}`} style={{ fontSize: '1.2rem' }}>🔄</span>
+                                            )}
+                                            <span style={{
+                                                fontSize: '0.75rem',
+                                                padding: '0.25rem 0.75rem',
+                                                borderRadius: '1rem',
+                                                backgroundColor: getEventColor(event.event_type),
+                                                color: 'white',
+                                                fontWeight: 'bold'
+                                            }}>
+                                                {event.event_type}
+                                            </span>
+                                        </div>
                                     </div>
 
                                     <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>
@@ -202,6 +276,11 @@ export default function Calendar() {
                                     <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>
                                         <strong>End:</strong> {formatDateTime(event.end_date)}
                                     </div>
+                                    {event.recurrence_rule && (
+                                        <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.5rem', fontStyle: 'italic' }}>
+                                            Repeats {event.recurrence_rule} until {new Date(event.recurrence_end_date).toLocaleDateString()}
+                                        </div>
+                                    )}
 
                                     {event.location && (
                                         <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>
@@ -213,10 +292,10 @@ export default function Calendar() {
                                         <p style={{ marginTop: '0.75rem', color: '#555' }}>{event.description}</p>
                                     )}
 
-                                    {user?.role === 'board' && (
+                                    {canEdit && (
                                         <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
                                             <button
-                                                onClick={() => handleEdit(event)}
+                                                onClick={() => { setError(''); handleEdit(event); }}
                                                 className="btn"
                                                 style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
                                             >
@@ -253,6 +332,18 @@ export default function Calendar() {
                 }}>
                     <div className="card" style={{ width: '90%', maxWidth: '600px', maxHeight: '90vh', overflow: 'auto' }}>
                         <h2 style={{ marginBottom: '1.5rem' }}>{selectedEvent ? 'Edit Event' : 'Add New Event'}</h2>
+                        {error && (
+                            <div style={{
+                                padding: '0.75rem',
+                                backgroundColor: '#f8d7da',
+                                color: '#721c24',
+                                borderRadius: '0.25rem',
+                                marginBottom: '1rem',
+                                fontSize: '0.9rem'
+                            }}>
+                                {error}
+                            </div>
+                        )}
                         <form onSubmit={handleSubmit}>
                             <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
@@ -296,30 +387,63 @@ export default function Calendar() {
                                 />
                             </div>
 
-                            <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-                                    Start Date & Time *
-                                </label>
-                                <input
-                                    type="datetime-local"
-                                    value={formData.start_date}
-                                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                                    required
-                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #ddd' }}
-                                />
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                                        Start Date & Time *
+                                    </label>
+                                    <input
+                                        type="datetime-local"
+                                        value={formData.start_date}
+                                        onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                                        required
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #ddd' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                                        End Date & Time *
+                                    </label>
+                                    <input
+                                        type="datetime-local"
+                                        value={formData.end_date}
+                                        onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                                        required
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #ddd' }}
+                                    />
+                                </div>
                             </div>
 
-                            <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-                                    End Date & Time *
-                                </label>
-                                <input
-                                    type="datetime-local"
-                                    value={formData.end_date}
-                                    onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                                    required
-                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #ddd' }}
-                                />
+                            {/* Recurrence Section */}
+                            <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#f9f9f9', borderRadius: '0.5rem' }}>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Recurrence</label>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Repeat</label>
+                                        <select
+                                            value={formData.recurrence_rule}
+                                            onChange={(e) => setFormData({ ...formData, recurrence_rule: e.target.value })}
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #ddd' }}
+                                        >
+                                            <option value="">None (One-time)</option>
+                                            <option value="DAILY">Daily</option>
+                                            <option value="WEEKLY">Weekly</option>
+                                            <option value="MONTHLY">Monthly</option>
+                                        </select>
+                                    </div>
+                                    {formData.recurrence_rule && (
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Until Date</label>
+                                            <input
+                                                type="date"
+                                                value={formData.recurrence_end_date}
+                                                onChange={(e) => setFormData({ ...formData, recurrence_end_date: e.target.value })}
+                                                required={!!formData.recurrence_rule}
+                                                style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #ddd' }}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             <div style={{ marginBottom: '1.5rem' }}>
