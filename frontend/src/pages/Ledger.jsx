@@ -1,25 +1,57 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import PaymentModal from '../components/PaymentModal';
+import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
 export default function Ledger() {
+    const { user } = useAuth();
     const [ledger, setLedger] = useState([]);
     const [summary, setSummary] = useState({ current_balance: 0 });
     const [showPayment, setShowPayment] = useState(false);
+    const [success, setSuccess] = useState(null);
 
     const fetchData = () => {
-        fetch(`${API_URL}/api/finance/ledger`).then(res => res.json()).then(setLedger).catch(console.error);
-        fetch(`${API_URL}/api/finance/balance`).then(res => res.json()).then(setSummary).catch(console.error);
+        if (!user?.community_id) return;
+        const token = localStorage.getItem('esntes_token');
+        const headers = { 'Authorization': `Bearer ${token}` };
+
+        fetch(`${API_URL}/api/communities/${user.community_id}/finance/ledger`, { headers })
+            .then(res => res.json())
+            .then(setLedger)
+            .catch(console.error);
+
+        fetch(`${API_URL}/api/communities/${user.community_id}/finance/balance`, { headers })
+            .then(res => res.json())
+            .then(setSummary)
+            .catch(console.error);
     };
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [user]);
+
+    // Auto-dismiss notifications
+    useEffect(() => {
+        if (success) {
+            const timer = setTimeout(() => {
+                setSuccess(null);
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [success]);
 
     return (
         <div className="container">
             <Link to="/" style={{ display: 'inline-block', marginBottom: '1rem', color: '#666', fontSize: '0.9rem' }}>← Back to Dashboard</Link>
+
+            {/* Inline Notifications */}
+            {success && (
+                <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#dcfce7', color: '#16a34a', borderRadius: '4px', border: '1px solid #bbf7d0' }}>
+                    {success}
+                </div>
+            )}
+
             <div className="header">
                 <h1>Financial Ledger</h1>
             </div>
@@ -41,7 +73,7 @@ export default function Ledger() {
                     amount={summary.current_balance}
                     onClose={() => setShowPayment(false)}
                     onSuccess={() => {
-                        alert("Payment Successful!");
+                        setSuccess("Payment Successful!");
                         fetchData();
                     }}
                 />

@@ -19,20 +19,49 @@ export default function Documents() {
         file_url: ''
     });
 
+    // UI State
+    const [error, setError] = useState(null);
+    const [success, setSuccess] = useState(null);
+
+    // Auto-dismiss notifications
     useEffect(() => {
-        fetchDocuments();
-    }, []);
+        if (error || success) {
+            const timer = setTimeout(() => {
+                setError(null);
+                setSuccess(null);
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [error, success]);
+
+    useEffect(() => {
+        if (user?.community_id) {
+            fetchDocuments();
+        }
+    }, [user]);
 
     const fetchDocuments = () => {
-        const role = user?.role || 'resident';
-        fetch(`${API_URL}/api/documents?user_role=${role}`)
-            .then(res => res.json())
+        if (!user?.community_id) return;
+        const role = user?.role?.name || user?.role || 'resident'; // Handle object or string role
+        const token = localStorage.getItem('esntes_token');
+        fetch(`${API_URL}/api/communities/${user.community_id}/documents?user_role=${role}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+            .then(res => {
+                if (res.status === 401) throw new Error("Unauthorized");
+                return res.json();
+            })
             .then(data => {
-                setDocuments(data);
+                if (Array.isArray(data)) setDocuments(data);
+                else setDocuments([]);
                 setLoading(false);
             })
             .catch(err => {
                 console.error(err);
+                if (err.message === "Unauthorized") setError("Please log in again.");
+                else setError("Failed to load documents.");
                 setLoading(false);
             });
     };
@@ -41,19 +70,23 @@ export default function Documents() {
         e.preventDefault();
 
         if (!formData.title || !formData.title.trim()) {
-            alert('Document title is required.');
+            setError('Document title is required.');
             return;
         }
 
         if (!formData.file_url || !formData.file_url.trim()) {
-            alert('File URL is required.');
+            setError('File URL is required.');
             return;
         }
 
         try {
-            const res = await fetch(`${API_URL}/api/documents/`, {
+            const token = localStorage.getItem('esntes_token');
+            const res = await fetch(`${API_URL}/api/communities/${user.community_id}/documents`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify(formData)
             });
 
@@ -66,14 +99,15 @@ export default function Documents() {
                     description: '',
                     file_url: ''
                 });
+                setSuccess('Document uploaded successfully!');
                 fetchDocuments();
             } else {
                 const error = await res.json();
-                alert(error.detail || 'Failed to upload document.');
+                setError(error.detail || 'Failed to upload document.');
             }
         } catch (err) {
             console.error(err);
-            alert('Error uploading document.');
+            setError('Error uploading document.');
         }
     };
 
@@ -81,16 +115,22 @@ export default function Documents() {
         if (!confirm('Are you sure you want to delete this document?')) return;
 
         try {
-            const res = await fetch(`${API_URL}/api/documents/${docId}`, {
-                method: 'DELETE'
+            const token = localStorage.getItem('esntes_token');
+            const res = await fetch(`${API_URL}/api/communities/${user.community_id}/documents/${docId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
             });
 
             if (res.ok) {
                 fetchDocuments();
+            } else {
+                setError("Failed to delete document.");
             }
         } catch (err) {
             console.error(err);
-            alert('Error deleting document.');
+            setError('Error deleting document.');
         }
     };
 
@@ -132,12 +172,24 @@ export default function Documents() {
         <div className="container">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <h1>Document Library</h1>
-                {user?.role === 'board' && (
+                {(user?.role === 'board' || user?.role === 'admin') && (
                     <button onClick={() => setShowModal(true)} className="btn btn-primary">
                         + Upload Document
                     </button>
                 )}
             </div>
+
+            {/* Inline Notifications */}
+            {error && (
+                <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '4px', border: '1px solid #fecaca' }}>
+                    {error}
+                </div>
+            )}
+            {success && (
+                <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#dcfce7', color: '#16a34a', borderRadius: '4px', border: '1px solid #bbf7d0' }}>
+                    {success}
+                </div>
+            )}
 
             <div className="card" style={{ marginBottom: '1rem', padding: '1rem' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: '1rem', alignItems: 'end' }}>
@@ -235,7 +287,7 @@ export default function Documents() {
                                         >
                                             📥 Download
                                         </button>
-                                        {user?.role === 'board' && (
+                                        {(user?.role === 'board' || user?.role === 'admin') && (
                                             <button
                                                 onClick={() => handleDelete(doc.id)}
                                                 className="btn"

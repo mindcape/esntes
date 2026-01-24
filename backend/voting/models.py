@@ -12,6 +12,7 @@ class Election(Base):
     end_date = Column(DateTime)
     is_active = Column(Boolean, default=True)
     election_type = Column(String, default="single") # single, multi, vendor
+    community_id = Column(Integer, ForeignKey("communities.id"), nullable=False, server_default="1")
     allowed_selections = Column(Integer, default=1)
     
     candidates = relationship("Candidate", back_populates="election", cascade="all, delete-orphan")

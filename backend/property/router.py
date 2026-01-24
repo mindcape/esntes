@@ -1,121 +1,146 @@
+
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
-from enum import Enum
+from sqlalchemy.orm import Session
+from backend.core.database import get_db
+from backend.property.models import ARCRequest, ARCStatus
+from backend.auth.models import User
+from backend.auth.dependencies import get_current_user
+
+
+from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
+from typing import List, Optional
+from datetime import datetime
+from sqlalchemy.orm import Session
+from backend.core.database import get_db
+from backend.property.models import ARCRequest, ARCStatus
+from backend.auth.models import User
+from backend.auth.dependencies import get_current_user
+from backend.community.models import Community
 
 router = APIRouter()
 
-class ARCStatus(str, Enum):
-    PENDING = "Pending"
-    UNDER_REVIEW = "Under Review"
-    APPROVED = "Approved"
-    DENIED = "Denied"
-    MORE_INFO = "More Info Needed"
-
 class ARCRequestBase(BaseModel):
-    resident_id: int # In real app, get from auth context
+    resident_id: int 
     resident_address: str
     description: str
-    contractor_name: str  # Now required
-    projected_start: str  # Now required
+    contractor_name: str
+    projected_start: str
     anticipated_end: Optional[str] = None
     terms_accepted: bool = False
 
-class ARCRequest(ARCRequestBase):
+class ARCRequestResponse(ARCRequestBase):
     id: int
     submission_date: datetime
     status: ARCStatus
     comments: List[str] = []
     work_started_before_approval: bool = False
+    
+    class Config:
+        orm_mode = True
 
-# Mock Database
-mock_arc_requests = [
-    {
-        "id": 1,
-        "resident_id": 1,
-        "resident_address": "123 Main St",
-        "description": "Install 6ft cedar fence in backyard.",
-        "contractor_name": "Fence Masters Inc.",
-        "projected_start": "2026-03-01",
-        "anticipated_end": "2026-03-15",
-        "submission_date": datetime(2026, 1, 10),
-        "status": ARCStatus.PENDING,
-        "comments": [],
-        "terms_accepted": True,
-        "work_started_before_approval": False
-    },
-    {
-        "id": 2,
-        "resident_id": 102,
-        "resident_address": "Schrute Farms",
-        "description": "Paint barn 'Beet Red'.",
-        "contractor_name": "Mose",
-        "projected_start": "2026-02-15",
-        "anticipated_end": "2026-02-20",
-        "submission_date": datetime(2026, 1, 5),
-        "status": ARCStatus.UNDER_REVIEW,
-        "comments": ["Board checking color pallette restrictions."],
-        "terms_accepted": True,
-        "work_started_before_approval": False
-    }
-]
+@router.get("/{community_id}/arc/my", response_model=List[ARCRequestResponse])
+async def get_my_requests(
+    community_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Verify community
+    community = db.query(Community).filter(Community.id == community_id).first()
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
 
-@router.get("/arc/my", response_model=List[ARCRequest])
-async def get_my_requests(user_id: int = 1): # Mock auth dependency
-    # Filter for current user
-    return [req for req in mock_arc_requests if req["resident_id"] == user_id]
+    if current_user.community_id != community_id and current_user.role_id != 3:
+         raise HTTPException(status_code=403, detail="Not a member of this community")
 
-@router.get("/arc/all", response_model=List[ARCRequest])
-async def get_all_requests():
-    # Board only access in real app
-    return mock_arc_requests
+    # Filter by user ID AND community ID
+    return db.query(ARCRequest).filter(
+        ARCRequest.resident_id == current_user.id,
+        ARCRequest.community_id == community_id
+    ).all()
 
-@router.post("/arc", response_model=ARCRequest)
-async def submit_request(request: ARCRequestBase):
-    # Validate terms acceptance
+@router.get("/{community_id}/arc", response_model=List[ARCRequestResponse])
+async def get_all_requests(
+    community_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Verify community
+    community = db.query(Community).filter(Community.id == community_id).first()
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+        
+    # Permission Check (Board/Admin)
+    if current_user.role_id != 3: # If not super admin
+        if current_user.community_id != community_id:
+             raise HTTPException(status_code=403, detail="Access denied")
+        # Check if board role
+        if not (current_user.role and current_user.role.name in ['board', 'admin']):
+             raise HTTPException(status_code=403, detail="Only board members can view ARC requests")
+
+    return db.query(ARCRequest).filter(
+        ARCRequest.community_id == community_id
+    ).all()
+
+@router.post("/{community_id}/arc", response_model=ARCRequestResponse)
+async def submit_request(
+    community_id: int,
+    request: ARCRequestBase, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Verify community
+    community = db.query(Community).filter(Community.id == community_id).first()
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+        
+    if current_user.community_id != community_id and current_user.role_id != 3:
+         raise HTTPException(status_code=403, detail="Not a member of this community")
+
     if not request.terms_accepted:
-        raise HTTPException(status_code=400, detail="You must accept the terms and conditions to submit a request.")
+        raise HTTPException(status_code=400, detail="Terms must be accepted.")
     
-    # Validate required fields
-    if not request.contractor_name or not request.contractor_name.strip():
-        raise HTTPException(status_code=400, detail="Contractor name is required. Enter 'Self' for DIY projects.")
-    
-    if not request.projected_start:
-        raise HTTPException(status_code=400, detail="Projected start date is required.")
-    
-    # Validate date logic: end date must be after start date
-    if request.anticipated_end and request.projected_start:
-        try:
-            from datetime import datetime as dt
-            start_date = dt.fromisoformat(request.projected_start)
-            end_date = dt.fromisoformat(request.anticipated_end)
-            if end_date <= start_date:
-                raise HTTPException(status_code=400, detail="Anticipated end date must be after the projected start date.")
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid date format.")
-    
-    new_req = {
-        "id": len(mock_arc_requests) + 1,
-        "resident_id": request.resident_id,
-        "resident_address": request.resident_address,
-        "description": request.description,
-        "contractor_name": request.contractor_name,
-        "projected_start": request.projected_start,
-        "anticipated_end": request.anticipated_end,
-        "submission_date": datetime.now(),
-        "status": ARCStatus.PENDING,
-        "comments": [],
-        "terms_accepted": request.terms_accepted,
-        "work_started_before_approval": False
-    }
-    mock_arc_requests.append(new_req)
+    new_req = ARCRequest(
+        resident_id=current_user.id, # Use authenticated user ID
+        resident_address=request.resident_address,
+        description=request.description,
+        contractor_name=request.contractor_name,
+        projected_start=request.projected_start,
+        anticipated_end=request.anticipated_end,
+        terms_accepted=request.terms_accepted,
+        submission_date=datetime.utcnow(),
+        status=ARCStatus.PENDING,
+        community_id=community_id
+    )
+    db.add(new_req)
+    db.commit()
+    db.refresh(new_req)
     return new_req
 
-@router.put("/arc/{request_id}/status", response_model=ARCRequest)
-async def update_status(request_id: int, status: ARCStatus):
-    for req in mock_arc_requests:
-        if req["id"] == request_id:
-            req["status"] = status
-            return req
-    raise HTTPException(status_code=404, detail="Request not found")
+@router.put("/{community_id}/arc/{request_id}/status", response_model=ARCRequestResponse)
+async def update_status(
+    community_id: int,
+    request_id: int, 
+    status: ARCStatus, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Verify community context
+    req = db.query(ARCRequest).filter(ARCRequest.id == request_id, ARCRequest.community_id == community_id).first()
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found in this community")
+    
+    # Permission Check
+    if current_user.role_id != 3:
+        if current_user.community_id != community_id:
+             raise HTTPException(status_code=403, detail="Access denied")
+        if not (current_user.role and current_user.role.name in ['board', 'admin']):
+             raise HTTPException(status_code=403, detail="Only board members can update ARC status")
+
+    req.status = status
+    db.commit()
+    db.refresh(req)
+    return req

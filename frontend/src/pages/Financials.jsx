@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
 export default function Financials() {
+    const { user } = useAuth();
     const [delinquencies, setDelinquencies] = useState([]);
     const [balanceSheet, setBalanceSheet] = useState(null);
     const [incomeStatement, setIncomeStatement] = useState(null);
@@ -10,12 +12,16 @@ export default function Financials() {
     const [message, setMessage] = useState('');
 
     useEffect(() => {
+        if (!user?.community_id) return;
+        const token = localStorage.getItem('esntes_token');
+        const headers = { 'Authorization': `Bearer ${token}` };
+
         Promise.all([
-            fetch(`${API_URL}/api/finance/delinquencies`).then(r => r.json()),
-            fetch(`${API_URL}/api/finance/reports/balance-sheet`).then(r => r.json()),
-            fetch(`${API_URL}/api/finance/reports/income-statement`).then(r => r.json())
+            fetch(`${API_URL}/api/communities/${user.community_id}/finance/delinquencies`, { headers }).then(r => r.json()),
+            fetch(`${API_URL}/api/communities/${user.community_id}/finance/reports/balance-sheet`, { headers }).then(r => r.json()),
+            fetch(`${API_URL}/api/communities/${user.community_id}/finance/reports/income-statement`, { headers }).then(r => r.json())
         ]).then(([delinqData, bsData, isData]) => {
-            setDelinquencies(delinqData);
+            setDelinquencies(Array.isArray(delinqData) ? delinqData : []);
             setBalanceSheet(bsData);
             setIncomeStatement(isData);
             setLoading(false);
@@ -23,19 +29,28 @@ export default function Financials() {
             console.error(err);
             setLoading(false);
         });
-    }, []);
+    }, [user]);
 
     const fetchDelinquencies = () => {
-        fetch(`${API_URL}/api/finance/delinquencies`)
+        if (!user?.community_id) return;
+        const token = localStorage.getItem('esntes_token');
+        fetch(`${API_URL}/api/communities/${user.community_id}/finance/delinquencies`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
             .then(res => res.json())
-            .then(setDelinquencies)
+            .then(data => setDelinquencies(Array.isArray(data) ? data : []))
             .catch(console.error);
     };
 
     const runAssessments = async () => {
         setMessage('');
+        if (!user?.community_id) return;
         try {
-            const res = await fetch(`${API_URL}/api/finance/assessments/generate`, { method: 'POST' });
+            const token = localStorage.getItem('esntes_token');
+            const res = await fetch(`${API_URL}/api/communities/${user.community_id}/finance/assessments/generate`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             const data = await res.json();
             if (res.ok) {
                 setMessage(`Success: ${data.message}`);
@@ -50,8 +65,13 @@ export default function Financials() {
 
     const runLateFees = async () => {
         setMessage('');
+        if (!user?.community_id) return;
         try {
-            const res = await fetch(`${API_URL}/api/finance/assessments/late-fees`, { method: 'POST' });
+            const token = localStorage.getItem('esntes_token');
+            const res = await fetch(`${API_URL}/api/communities/${user.community_id}/finance/assessments/late-fees`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             const data = await res.json();
             if (res.ok) {
                 setMessage(`Success: ${data.message}`);

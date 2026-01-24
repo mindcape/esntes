@@ -1,5 +1,6 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
+import Sidebar from './components/Sidebar';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Dashboard from './pages/Dashboard';
 import Maintenance from './pages/Maintenance';
@@ -23,53 +24,72 @@ import BoardViolations from './pages/BoardViolations';
 import AdminDashboard from './pages/AdminDashboard';
 import CommunitySettings from './pages/CommunitySettings';
 
-import Sidebar from './components/Sidebar';
+import Login from './pages/Login';
+import SetupAccount from './pages/SetupAccount';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import Navbar from './components/Navbar';
+import Home from './pages/Home';
+import Layout from './components/Layout';
 
 const PrivateRoute = ({ children }) => {
-  const { user } = useAuth();
-  return user ? children : <div className="container" style={{ marginTop: '2rem', textAlign: 'center' }}>
-    <h2>Please Login</h2>
-    <p>Select a role in the sidebar to simulate login.</p>
-  </div>;
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  return user ? children : <Navigate to="/login" replace />;
 };
 
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'hsl(210 20% 98%)' }}>
-          <Sidebar />
-          <div style={{ flex: 1, height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <main style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
-              <Routes>
-                <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-                <Route path="/maintenance" element={<PrivateRoute><Maintenance /></PrivateRoute>} />
-                <Route path="/ledger" element={<PrivateRoute><Ledger /></PrivateRoute>} />
-                <Route path="/calendar" element={<PrivateRoute><Calendar /></PrivateRoute>} />
-                <Route path="/directory" element={<PrivateRoute><Directory /></PrivateRoute>} />
-                <Route path="/violations" element={<PrivateRoute><Violations /></PrivateRoute>} />
-                <Route path="/documents" element={<PrivateRoute><Documents /></PrivateRoute>} />
-                <Route path="/elections" element={<PrivateRoute><Elections /></PrivateRoute>} />
-                <Route path="/elections/new" element={<PrivateRoute><CreateElection /></PrivateRoute>} />
-                <Route path="/elections/:id" element={<PrivateRoute><ElectionDetail /></PrivateRoute>} />
-                <Route path="/visitors" element={<PrivateRoute><Visitors /></PrivateRoute>} />
-                <Route path="/faq" element={<PrivateRoute><FAQ /></PrivateRoute>} />
-                <Route path="/help/tech" element={<PrivateRoute><TechSupport /></PrivateRoute>} />
+        <div className="app-container">
+          <Navbar />
+          <main className="main-content">
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/setup" element={<SetupAccount />} />
 
-                <Route path="/help/hoa" element={<PrivateRoute><HOASupport /></PrivateRoute>} />
-                <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
-                <Route path="/board/residents" element={<PrivateRoute><ManageResidents /></PrivateRoute>} />
-                <Route path="/board/financials" element={<PrivateRoute><Financials /></PrivateRoute>} />
-                <Route path="/arc" element={<PrivateRoute><ARCRequests /></PrivateRoute>} />
-                <Route path="/board/arc" element={<PrivateRoute><BoardARC /></PrivateRoute>} />
-                <Route path="/board/violations" element={<PrivateRoute><BoardViolations /></PrivateRoute>} />
+              {/* Private Routes */}
+              <Route element={
+                <PrivateRoute>
+                  <Layout />
+                </PrivateRoute>
+              }>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/maintenance" element={<Maintenance />} />
+                <Route path="/ledger" element={<Ledger />} />
+                <Route path="/calendar" element={<Calendar />} />
+                <Route path="/directory" element={<ManageResidents />} />
+                <Route path="/violations" element={<Violations />} />
+                <Route path="/documents" element={<Documents />} />
+                <Route path="/elections" element={<Elections />} />
+                <Route path="/elections/new" element={<CreateElection />} />
+                <Route path="/elections/:id" element={<ElectionDetail />} />
+                <Route path="/visitors" element={<Visitors />} />
+                <Route path="/faq" element={<FAQ />} />
+                <Route path="/help/tech" element={<TechSupport />} />
+                <Route path="/help/hoa" element={<HOASupport />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/board/residents" element={<ManageResidents />} />
+                <Route path="/board/financials" element={<Financials />} />
+                <Route path="/arc" element={<ARCRequests />} />
+                <Route path="/board/arc" element={<BoardARC />} />
+                <Route path="/board/violations" element={<BoardViolations />} />
 
-                {/* Super Admin Route - Handles its own auth */}
+                {/* Admin Routes */}
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/community/:id" element={<CommunitySettings />} />
-              </Routes>
-            </main>
-          </div>
+              </Route>
+            </Routes>
+          </main>
         </div>
       </Router>
     </AuthProvider>

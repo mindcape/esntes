@@ -1,0 +1,314 @@
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from pydantic import BaseModel, EmailStr
+from backend.core.database import get_db
+from backend.auth.models import User
+from backend.community.models import Community
+from backend.auth.security import verify_password, get_password_hash, create_access_token
+from typing import Optional
+from backend.auth.captcha import verify_captcha_token
+
+router = APIRouter()
+
+# Schema for Login
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+# Schema for Account Setup
+class SetupAccountRequest(BaseModel):
+    email: EmailStr
+    community_code: str
+    password: str
+
+# Schema for Token Response
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    user: dict
+
+from typing import Optional, Union
+
+@router.post("/login", response_model=Union[Token, dict])
+def login(request: LoginRequest, db: Session = Depends(get_db)):
+    # Find user by email
+    user = db.query(User).filter(User.email == request.email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+        )
+    
+    # Check password
+    if not user.hashed_password or not verify_password(request.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+        )
+    
+    # Check if active
+    if not user.is_active:
+         raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Inactive user",
+        )
+
+    # Check MFA
+    if user.mfa_enabled:
+        # Return 403 specifically for MFA, or a 200 with "mfa_required": True?
+        # 403 is good, but detail must be parseable.
+        return {
+             "mfa_required": True,
+             "email": user.email, # Pass back to client to send to verify-mfa-login
+             "message": "MFA code required"
+        } 
+        # Note: This breaks response_model=Token. I need to update response model or loosen it.
+        # I'll update the response_model in the decorator.
+
+    # Generate Token
+    access_token = create_access_token(subject=user.id)
+    
+    # Return user info along with token
+    user_data = {
+        "id": user.id,
+        "email": user.email,
+        "name": user.full_name,
+        "role": user.role.name if user.role else "resident",
+        "community_id": user.community_id,
+        "is_setup_complete": user.is_setup_complete
+    }
+    
+    # Add community modules settings if available
+    if user.community:
+        user_data["community"] = {
+            "name": user.community.name,
+            "modules_enabled": user.community.modules_enabled
+        }
+    
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer",
+        "user": user_data
+    }
+
+@router.post("/setup-account", response_model=Token)
+def setup_account(request: SetupAccountRequest, db: Session = Depends(get_db)):
+    # 1. Validate Community Code
+    community = db.query(Community).filter(Community.community_code == request.community_code).first()
+    if not community:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid Community Code",
+        )
+    
+    # 2. Find User by Email AND Community
+    user = db.query(User).filter(
+        User.email == request.email, 
+        User.community_id == community.id
+    ).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in this community. Please contact your board to be added.",
+        )
+    
+    # 3. Check if already setup
+    if user.is_setup_complete:
+         raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Account already setup. Please login.",
+        )
+        
+    # 4. Set Password and Mark Complete
+    user.hashed_password = get_password_hash(request.password)
+    user.is_setup_complete = True
+    db.commit()
+    db.refresh(user)
+    
+    # 5. Generate Token and Login
+    access_token = create_access_token(subject=user.id)
+    
+    user_data = {
+        "id": user.id,
+        "email": user.email,
+        "name": user.full_name,
+        "role": user.role.name if user.role else "resident",
+        "community_id": user.community_id,
+        "is_setup_complete": user.is_setup_complete,
+         "community": {
+            "name": community.name,
+            "modules_enabled": community.modules_enabled
+        }
+    }
+
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer", 
+        "user": user_data
+    }
+
+# --- Advanced Auth Endpoints ---
+
+from datetime import datetime, timedelta
+import uuid
+import pyotp
+from backend.core.email import send_password_reset_email
+from backend.auth.dependencies import get_current_user
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+    captcha_token: str # Mock captcha
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+class MFAVerifyRequest(BaseModel):
+    code: str
+
+@router.post("/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+
+
+    # 1. Verify Captcha
+    if not request.captcha_token or not verify_captcha_token(request.captcha_token):
+        raise HTTPException(status_code=400, detail="Invalid CAPTCHA")
+    
+    # 2. Find User
+    user = db.query(User).filter(User.email == request.email).first()
+    if not user:
+        # Prevent email enumeration: return success even if not found
+        return {"message": "If an account exists, a password reset email has been sent."}
+    
+    # 3. Generate Token
+    token = str(uuid.uuid4())
+    user.reset_token = token
+    user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
+    db.commit()
+    
+    # 4. Send Email
+    await send_password_reset_email(user.email, token)
+    
+    return {"message": "If an account exists, a password reset email has been sent."}
+
+@router.post("/reset-password")
+async def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
+    # 1. Find User by Token
+    user = db.query(User).filter(User.reset_token == request.token).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+        
+    # 2. Check Expiry
+    if user.reset_token_expires < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Token expired")
+        
+    # 3. Reset Password
+    user.hashed_password = get_password_hash(request.new_password)
+    user.reset_token = None
+    user.reset_token_expires = None
+    user.is_active = True # Re-activate if needed
+    db.commit()
+    
+    return {"message": "Password has been reset successfully. Please login."}
+
+@router.post("/mfa/setup")
+async def mfa_setup(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Generate Secret
+    secret = pyotp.random_base32()
+    
+    # Generate Provisioning URI (QR Code content)
+    # Issuer should be config driven
+    issuer = "ESNTES HOA"
+    provisioning_uri = pyotp.totp.TOTP(secret).provisioning_uri(name=current_user.email, issuer_name=issuer)
+    
+    # Can't save secret yet until verified, or save as pending? 
+    # For simplicity, we save it but don't enable it.
+    current_user.mfa_secret = secret
+    current_user.mfa_enabled = False
+    db.commit()
+    
+    return {
+        "secret": secret,
+        "provisioning_uri": provisioning_uri
+    }
+
+@router.post("/mfa/enable")
+async def mfa_enable(
+    request: MFAVerifyRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user.mfa_secret:
+         raise HTTPException(status_code=400, detail="MFA setup not initiated")
+
+    totp = pyotp.TOTP(current_user.mfa_secret)
+    if not totp.verify(request.code):
+        raise HTTPException(status_code=400, detail="Invalid code")
+        
+    current_user.mfa_enabled = True
+    db.commit()
+    return {"message": "MFA enabled successfully"}
+
+@router.post("/mfa/disable")
+async def mfa_disable(
+    request: MFAVerifyRequest, # Should strictly require password too for security, but code is okay for now
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    totp = pyotp.TOTP(current_user.mfa_secret)
+    # If they lost device, they can't disable via code. Admins should do it.
+    # But if they have device, they verify code to disable.
+    # Alternatively require password.
+    
+    if not totp.verify(request.code):
+         raise HTTPException(status_code=400, detail="Invalid code")
+
+    current_user.mfa_enabled = False
+    current_user.mfa_secret = None
+    db.commit()
+    return {"message": "MFA disabled"}
+
+# Update Login to support MFA
+@router.post("/verify-mfa-login", response_model=Token)
+async def verify_mfa_login(
+    email: str, # passed from first step 
+    code: str,
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.email == email).first()
+    if not user or not user.mfa_enabled:
+         raise HTTPException(status_code=400, detail="Invalid request")
+         
+    totp = pyotp.TOTP(user.mfa_secret)
+    if not totp.verify(code):
+        raise HTTPException(status_code=401, detail="Invalid MFA code")
+
+    # Generate Token
+    access_token = create_access_token(subject=user.id)
+    
+    # Return user data (Same as login)
+    user_data = {
+        "id": user.id,
+        "email": user.email,
+        "name": user.full_name,
+        "role": user.role.name if user.role else "resident",
+        "community_id": user.community_id,
+        "is_setup_complete": user.is_setup_complete
+    }
+     # Add community modules settings if available
+    if user.community:
+        user_data["community"] = {
+            "name": user.community.name,
+            "modules_enabled": user.community.modules_enabled
+        }
+        
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer",
+        "user": user_data
+    }
