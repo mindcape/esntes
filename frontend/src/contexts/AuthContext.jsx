@@ -24,17 +24,29 @@ export const AuthProvider = ({ children }) => {
         checkAuth();
     }, []);
 
-    const login = async (email, password) => {
+    const login = async (email, password, captchaToken = null) => {
         setLoading(true);
         setError(null);
         try {
+            const body = { email, password };
+            if (captchaToken) body.captcha_token = captchaToken;
+
             const response = await fetch('http://localhost:8000/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify(body)
             });
 
             if (!response.ok) {
+                // Handle 200 OK with business logic error (like captcha requirement) if API returns that way?
+                // Backend raises HTTPException for Auth failure, so response.ok will be false.
+                // But for "Captcha Required" warning (before lock out?), I implemented it as returning 200 with {captcha_required: true}
+                // Wait, let's check backend router again (Step 454).
+                // "return { "captcha_required": True ... }" -> This is a 200 response.
+
+                // So if response.ok is false, it's a real error (401/400).
+                // If response.ok is true, it could be token OR captcha warning.
+
                 const errorData = await response.json();
                 throw new Error(errorData.detail || 'Login failed');
             }
@@ -43,6 +55,10 @@ export const AuthProvider = ({ children }) => {
 
             if (data.mfa_required) {
                 return { mfa_required: true, email: data.email };
+            }
+
+            if (data.captcha_required) {
+                return { captcha_required: true, message: data.message };
             }
 
             setUser(data.user);

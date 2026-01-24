@@ -18,6 +18,11 @@ class Settings:
     USE_CREDENTIALS: bool = True
     VALIDATE_CERTS: bool = os.getenv("MAIL_VALIDATE_CERTS", "True") == "True"
 
+    # Stripe
+    STRIPE_SECRET_KEY: str = os.getenv("STRIPE_SECRET_KEY", "sk_test_placeholder")
+    STRIPE_PUBLISHABLE_KEY: str = os.getenv("STRIPE_PUBLISHABLE_KEY", "pk_test_placeholder")
+    STRIPE_WEBHOOK_SECRET: str = os.getenv("STRIPE_WEBHOOK_SECRET", "whsec_placeholder")
+
     # Frontend URL for Password Reset Links
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
     

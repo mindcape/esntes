@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
+import BoardOnboarding from './BoardOnboarding';
 
 export default function Financials() {
     const { user } = useAuth();
@@ -136,6 +137,7 @@ export default function Financials() {
 
             {activeTab === 'actions' ? (
                 <>
+                    <BoardOnboarding />
                     <div className="card" style={{ marginBottom: '2rem', backgroundColor: '#f8f9fa' }}>
 
                         <div className="card" style={{ marginBottom: '2rem', backgroundColor: '#f8f9fa' }}>

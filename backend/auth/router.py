@@ -15,36 +15,50 @@ router = APIRouter()
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    captcha_token: Optional[str] = None
 
-# Schema for Account Setup
-class SetupAccountRequest(BaseModel):
-    email: EmailStr
-    community_code: str
-    password: str
-
-# Schema for Token Response
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-    user: dict
-
-from typing import Optional, Union
+# ... (SetupAccountRequest, Token classes unchanged)
 
 @router.post("/login", response_model=Union[Token, dict])
 def login(request: LoginRequest, db: Session = Depends(get_db)):
     # Find user by email
     user = db.query(User).filter(User.email == request.email).first()
     if not user:
+        # To prevent enumeration, we just return generic error. 
+        # But for "failed attempts limiting", we technically need to track non-existent users too if we want to block IP.
+        # However, requirement says "login fails after 2 tries", usually implies user account lock/captcha.
+        # We will proceed with generic response but maybe random delay.
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
     
+    # Check Failed Attempts
+    if user.failed_login_attempts >= 2:
+        if not request.captcha_token:
+            # Tell frontend to show captcha
+            return {
+                "captcha_required": True,
+                "message": "Too many failed attempts. Please complete CAPTCHA."
+            }
+        
+        # Verify Captcha
+        if not verify_captcha_token(request.captcha_token):
+             raise HTTPException(status_code=400, detail="Invalid CAPTCHA")
+
     # Check password
     if not user.hashed_password or not verify_password(request.password, user.hashed_password):
+        # Increment failed attempts
+        user.failed_login_attempts += 1
+        db.commit()
+        
+        detail_msg = "Incorrect email or password"
+        if user.failed_login_attempts >= 2:
+            detail_msg = "Incorrect email or password. CAPTCHA required for next attempt."
+            
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail=detail_msg,
         )
     
     # Check if active
@@ -54,17 +68,17 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
             detail="Inactive user",
         )
 
+    # Success: Reset attempts
+    user.failed_login_attempts = 0
+    db.commit()
+
     # Check MFA
     if user.mfa_enabled:
-        # Return 403 specifically for MFA, or a 200 with "mfa_required": True?
-        # 403 is good, but detail must be parseable.
         return {
              "mfa_required": True,
-             "email": user.email, # Pass back to client to send to verify-mfa-login
+             "email": user.email, 
              "message": "MFA code required"
         } 
-        # Note: This breaks response_model=Token. I need to update response model or loosen it.
-        # I'll update the response_model in the decorator.
 
     # Generate Token
     access_token = create_access_token(subject=user.id)

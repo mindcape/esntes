@@ -17,6 +17,9 @@ const BOARD_ITEMS = [
     { path: '/board/financials', label: 'Financial Management', icon: '📊' },
     { path: '/board/arc', label: 'ARC Approvals', icon: '✅' },
     { path: '/board/violations', label: 'Violations Management', icon: '👮' },
+    { path: '/board/vendors', label: 'Vendors', icon: '👷' },
+    { path: '/board/work-orders', label: 'Work Orders', icon: '🛠️' },
+    { path: '/board/announcements', label: 'Announcements', icon: '📢' },
 ];
 
 export default function Sidebar() {
@@ -123,7 +126,7 @@ export default function Sidebar() {
                             </Link>
                         ))}
 
-                        {user.role === 'board' && (
+                        {(user.role === 'board' || user.role === 'admin') && (
                             <>
                                 <div style={{ margin: '1rem 0', borderTop: '1px solid #eee' }} />
                                 {!isCollapsed && <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#aaa', marginBottom: '0.5rem', paddingLeft: '0.5rem' }}>Board</div>}

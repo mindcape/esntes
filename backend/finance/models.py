@@ -27,6 +27,20 @@ class Account(Base):
     children = relationship("Account", backref="parent", remote_side=[id])
     journal_entries = relationship("JournalEntry", back_populates="account")
 
+class PaymentGatewayConfig(Base):
+    __tablename__ = "payment_gateway_configs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    community_id = Column(Integer, ForeignKey("communities.id"), nullable=False, unique=True)
+    stripe_account_id = Column(String, nullable=True) # Connected Account ID
+    is_active = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class TransactionStatus(str, enum.Enum):
+    PENDING = "Pending"
+    COMPLETED = "Completed"
+    FAILED = "Failed"
+
 class Transaction(Base):
     __tablename__ = "financial_transactions" # 'transactions' might be reserved in some DBs
     
@@ -36,6 +50,10 @@ class Transaction(Base):
     reference = Column(String, nullable=True) # e.g. Invoice #, Check #
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     community_id = Column(Integer, ForeignKey("communities.id"), nullable=False, server_default="1")
+    
+    # Payment Fields
+    stripe_payment_intent_id = Column(String, nullable=True, index=True)
+    status = Column(SQLEnum(TransactionStatus), default=TransactionStatus.COMPLETED)
     
     entries = relationship("JournalEntry", back_populates="transaction", cascade="all, delete-orphan")
 

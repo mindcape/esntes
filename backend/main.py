@@ -27,6 +27,8 @@ from backend.core.database import engine, Base
 # Import models to ensure they are registered with Base
 from backend.documents import models as document_models
 from backend.voting import models as voting_models
+from backend.vendor import models as vendor_models # Register Vendors
+from backend.communication import models as communication_models # Register Communication
 from backend.community import models as community_models # Register Community
 Base.metadata.create_all(bind=engine)
 
@@ -59,7 +61,16 @@ app.include_router(user_router.router, prefix="/api/user", tags=["user"])
 app.include_router(property_router.router, prefix="/api/communities", tags=["property"])
 app.include_router(violations_router.router, prefix="/api/communities", tags=["violations"])
 app.include_router(calendar_router.router, prefix="/api/communities", tags=["calendar"])
+
+from backend.communication import router as communication_router
+app.include_router(communication_router.router, prefix="/api/communication", tags=["communication"])
 app.include_router(voting_router.router, prefix="/api/voting", tags=["voting"])
+
+from backend.vendor import router as vendor_router
+app.include_router(vendor_router.router, prefix="/api/vendors", tags=["vendors"])
+
+from backend.finance import payment_router
+app.include_router(payment_router.router, prefix="/api/payments", tags=["payments"])
 
 from backend.dashboard import router as dashboard_router
 app.include_router(dashboard_router.router, prefix="/api/dashboard", tags=["dashboard"])

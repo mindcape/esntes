@@ -23,6 +23,9 @@ import BoardARC from './pages/BoardARC';
 import BoardViolations from './pages/BoardViolations';
 import AdminDashboard from './pages/AdminDashboard';
 import CommunitySettings from './pages/CommunitySettings';
+import ManageVendors from './pages/ManageVendors';
+import BoardWorkOrders from './pages/BoardWorkOrders';
+import BoardAnnouncements from './pages/BoardAnnouncements';
 
 import Login from './pages/Login';
 import SetupAccount from './pages/SetupAccount';
@@ -83,6 +86,9 @@ function App() {
                 <Route path="/arc" element={<ARCRequests />} />
                 <Route path="/board/arc" element={<BoardARC />} />
                 <Route path="/board/violations" element={<BoardViolations />} />
+                <Route path="/board/vendors" element={<ManageVendors />} />
+                <Route path="/board/work-orders" element={<BoardWorkOrders />} />
+                <Route path="/board/announcements" element={<BoardAnnouncements />} />
 
                 {/* Admin Routes */}
                 <Route path="/admin" element={<AdminDashboard />} />

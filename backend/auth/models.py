@@ -16,6 +16,7 @@ class User(Base):
     # Advanced Auth
     mfa_secret = Column(String, nullable=True)
     mfa_enabled = Column(Boolean, default=False)
+    failed_login_attempts = Column(Integer, default=0)
     reset_token = Column(String, nullable=True)
     reset_token_expires = Column(DateTime, nullable=True)
     
