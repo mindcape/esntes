@@ -9,8 +9,16 @@ export default function Profile() {
     const [message, setMessage] = useState('');
 
     useEffect(() => {
-        fetch(`${API_URL}/api/user/profile`)
-            .then(res => res.json())
+        const token = localStorage.getItem('esntes_token');
+        fetch(`${API_URL}/api/user/profile`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+            .then(res => {
+                if (!res.ok) throw new Error("Failed to fetch profile");
+                return res.json();
+            })
             .then(data => {
                 setProfile(data);
                 setLoading(false);
@@ -79,9 +87,13 @@ export default function Profile() {
         }
 
         try {
+            const token = localStorage.getItem('esntes_token');
             const res = await fetch(`${API_URL}/api/user/profile`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     email: profile.email,
                     phone: profile.phone,

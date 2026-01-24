@@ -8,11 +8,9 @@ import io
 from backend.core.database import get_db
 from backend.community.models import Community
 from backend.auth.models import User, Role
-from passlib.context import CryptContext
+from backend.auth.security import get_password_hash
 
 router = APIRouter()
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class SiteAdminCreate(BaseModel):
     email: str
@@ -38,6 +36,172 @@ async def list_site_admins(community_id: int, db: Session = Depends(get_db)):
         User.role_id == admin_role.id
     ).all()
     return admins
+
+class MemberResponse(BaseModel):
+    id: int
+    full_name: Optional[str] = None
+    email: str
+    role: str
+    address: Optional[str] = None
+    is_active: bool
+
+    class Config:
+        orm_mode = True
+
+@router.get("/communities/{community_id}/members", response_model=List[MemberResponse])
+async def list_community_members(community_id: int, db: Session = Depends(get_db)):
+    # Verify Community exists
+    community = db.query(Community).filter(Community.id == community_id).first()
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+
+    members = db.query(User).filter(User.community_id == community_id).all()
+    
+    response = []
+    for m in members:
+        role_name = m.role.name if m.role else "Unknown"
+        response.append(MemberResponse(
+            id=m.id,
+            full_name=m.full_name,
+            email=m.email,
+            role=role_name,
+            address=m.address,
+            is_active=m.is_active
+        ))
+    return response
+
+class MemberCreate(BaseModel):
+    full_name: str
+    email: str
+    role_name: str = "resident" # 'resident', 'board', 'admin'
+    address: Optional[str] = None
+    resident_type: Optional[str] = "owner"
+    owner_type: Optional[str] = "individual"
+
+@router.post("/communities/{community_id}/members")
+async def create_community_member(community_id: int, member: MemberCreate, db: Session = Depends(get_db)):
+    # 1. Verify Community
+    community = db.query(Community).filter(Community.id == community_id).first()
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+        
+    # 2. Check if email exists
+    if db.query(User).filter(User.email == member.email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    # 3. Get Role ID
+    role = db.query(Role).filter(Role.name == member.role_name).first()
+    if not role:
+        # Fallback creation if role doesn't exist
+        role = Role(name=member.role_name, description="Created via Admin")
+        db.add(role)
+        db.commit()
+
+    # 4. Create User
+    new_user = User(
+        email=member.email,
+        full_name=member.full_name,
+        community_id=community_id,
+        role_id=role.id,
+        address=member.address,
+        is_active=True,
+        is_opted_in=True,
+        resident_type=member.resident_type,
+        owner_type=member.owner_type,
+        auth0_id=f"admin_created|{member.email}" 
+    )
+    new_user.hashed_password = get_password_hash("welcome123")
+    
+    db.add(new_user)
+    db.commit()
+    return {"message": "Member created successfully"}
+
+class MemberUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    role_name: Optional[str] = None
+    address: Optional[str] = None
+    resident_type: Optional[str] = None
+    owner_type: Optional[str] = None
+    is_active: Optional[bool] = None
+
+@router.put("/communities/{community_id}/members/{user_id}")
+async def update_community_member(community_id: int, user_id: int, member: MemberUpdate, db: Session = Depends(get_db)):
+    # 1. Verify Community
+    community = db.query(Community).filter(Community.id == community_id).first()
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+
+    # 2. Get User
+    user = db.query(User).filter(User.id == user_id, User.community_id == community_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found in this community")
+
+    # 3. Update Fields
+    if member.full_name: user.full_name = member.full_name
+    if member.email: user.email = member.email
+    if member.address: user.address = member.address
+    if member.resident_type: user.resident_type = member.resident_type
+    if member.owner_type: user.owner_type = member.owner_type
+    if member.is_active is not None: user.is_active = member.is_active
+
+    # 4. Update Role if provided
+    if member.role_name:
+        role = db.query(Role).filter(Role.name == member.role_name).first()
+        if not role:
+             # Fallback creation 
+            role = Role(name=member.role_name, description="Created via Admin")
+            db.add(role)
+            db.commit()
+        user.role_id = role.id
+
+    db.commit()
+    db.commit()
+    return {"message": "Member updated successfully"}
+
+class BulkDeleteRequest(BaseModel):
+    user_ids: List[int]
+
+@router.post("/communities/{community_id}/members/bulk-delete")
+async def bulk_delete_members(community_id: int, request: BulkDeleteRequest, db: Session = Depends(get_db)):
+    # 1. Verify Community
+    community = db.query(Community).filter(Community.id == community_id).first()
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+
+    # 2. Deactivate users
+    # We only deactivate users belonging to this community to prevent accidental cross-tenant deletion
+    result = db.query(User).filter(
+        User.id.in_(request.user_ids),
+        User.community_id == community_id
+    ).update({User.is_active: False}, synchronize_session=False)
+
+    db.commit()
+    
+    return {"message": f"Successfully deactivated {result} members"}
+
+class ResetPasswordRequest(BaseModel):
+    password: Optional[str] = None
+
+@router.post("/users/{user_id}/reset-password")
+async def reset_user_password(user_id: int, request: ResetPasswordRequest = None, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if request and request.password:
+        new_password = request.password
+    else:
+        # Generate a random password
+        import secrets
+        import string
+        alphabet = string.ascii_letters + string.digits
+        new_password = ''.join(secrets.choice(alphabet) for i in range(10))
+    
+    user.hashed_password = get_password_hash(new_password)
+    db.commit()
+    
+    return {"message": "Password reset successfully", "new_password": new_password}
 
 @router.post("/communities/{community_id}/admins")
 async def create_site_admin(community_id: int, admin_data: SiteAdminCreate, db: Session = Depends(get_db)):
@@ -75,7 +239,7 @@ async def create_site_admin(community_id: int, admin_data: SiteAdminCreate, db: 
             auth0_id=f"admin|{admin_data.email}", # Mock Auth0 ID
             is_active=True
         )
-        new_user.hashed_password = pwd_context.hash("welcome123")
+        new_user.hashed_password = get_password_hash("welcome123")
         db.add(new_user)
         db.commit()
         return {"message": f"Created new Site Admin {new_user.email} for {community.name}"}
@@ -131,7 +295,7 @@ async def import_residents(community_id: int, file: UploadFile = File(...), db: 
             is_opted_in=True
         )
         # Set default password (welcom123) - In real app, trigger reset email
-        new_user.hashed_password = pwd_context.hash("welcome123") 
+        new_user.hashed_password = get_password_hash("welcome123") 
         
         db.add(new_user)
         imported_count += 1
@@ -148,8 +312,15 @@ class CommunityCreate(BaseModel):
     address: str
     units_count: int = 0
     amenities: Optional[List[str]] = []
+class CommunityCreate(BaseModel):
+    name: str
+    address: str
+    units_count: int = 0
+    amenities: Optional[List[str]] = []
     # New Fields
     subdomain: Optional[str] = None
+    community_code: str # Mandatory now
+    is_active: bool = True
     branding_settings: Optional[dict] = {}
     modules_enabled: Optional[dict] = {
         "finance": True,
@@ -160,6 +331,18 @@ class CommunityCreate(BaseModel):
         "calendar": True
     }
     payment_gateway_id: Optional[str] = None
+    
+    # Detailed Address
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
+    address2: Optional[str] = None
+    county: Optional[str] = None
+    
+    # POC
+    poc_name: Optional[str] = None
+    poc_email: Optional[str] = None
+    poc_phone: Optional[str] = None
 
 class CommunityResponse(CommunityCreate):
     id: int
@@ -174,6 +357,11 @@ async def create_community(community: CommunityCreate, db: Session = Depends(get
     if existing:
         raise HTTPException(status_code=400, detail="Community with this name already exists")
     
+    # Check for duplicate community code
+    existing_code = db.query(Community).filter(Community.community_code == community.community_code).first()
+    if existing_code:
+        raise HTTPException(status_code=400, detail="Community code already exists")
+
     # Check for duplicate subdomain
     if community.subdomain:
         existing_sub = db.query(Community).filter(Community.subdomain == community.subdomain).first()
@@ -186,9 +374,19 @@ async def create_community(community: CommunityCreate, db: Session = Depends(get
         units_count=community.units_count,
         amenities=community.amenities,
         subdomain=community.subdomain,
+        community_code=community.community_code,
+        is_active=community.is_active,
         branding_settings=community.branding_settings,
         modules_enabled=community.modules_enabled,
-        payment_gateway_id=community.payment_gateway_id
+        payment_gateway_id=community.payment_gateway_id,
+        city=community.city,
+        state=community.state,
+        zip_code=community.zip_code,
+        address2=community.address2,
+        county=community.county,
+        poc_name=community.poc_name,
+        poc_email=community.poc_email,
+        poc_phone=community.poc_phone
     )
     db.add(new_community)
     db.commit()
@@ -203,11 +401,29 @@ class CommunityUpdate(BaseModel):
     name: Optional[str] = None
     address: Optional[str] = None
     units_count: Optional[int] = None
+    is_active: Optional[bool] = None
     amenities: Optional[List[str]] = None
     subdomain: Optional[str] = None
     branding_settings: Optional[dict] = None
     modules_enabled: Optional[dict] = None
     payment_gateway_id: Optional[str] = None
+    
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
+    address2: Optional[str] = None
+    county: Optional[str] = None
+    poc_name: Optional[str] = None
+    poc_email: Optional[str] = None
+    poc_phone: Optional[str] = None
+
+
+@router.get("/communities/{community_id}", response_model=CommunityResponse)
+async def get_community(community_id: int, db: Session = Depends(get_db)):
+    community = db.query(Community).filter(Community.id == community_id).first()
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+    return community
 
 @router.put("/communities/{community_id}", response_model=CommunityResponse)
 async def update_community(community_id: int, community: CommunityUpdate, db: Session = Depends(get_db)):

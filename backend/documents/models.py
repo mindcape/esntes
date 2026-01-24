@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from backend.core.database import Base
 import enum
 from datetime import datetime
@@ -25,3 +25,4 @@ class Document(Base):
     file_url = Column(String)
     upload_date = Column(DateTime, default=datetime.utcnow)
     uploaded_by = Column(String)
+    community_id = Column(Integer, ForeignKey("communities.id"), nullable=False, server_default="1")

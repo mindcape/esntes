@@ -9,24 +9,42 @@ export default function Maintenance() {
     const [newRequest, setNewRequest] = useState({ title: '', description: '', category: 'General' });
 
     useEffect(() => {
-        // Mock fetch
-        fetch(`${API_URL}/api/maintenance/`, { headers: { 'Accept': 'application/json' } })
+        if (!user?.community_id) return;
+
+        const token = localStorage.getItem('esntes_token') || localStorage.getItem('token');
+        fetch(`${API_URL}/api/communities/${user.community_id}/maintenance`, {
+            headers: {
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${token}`
+            }
+        })
             .then(res => res.json())
-            .then(data => setRequests(data))
+            .then(data => {
+                if (Array.isArray(data)) setRequests(data);
+                else setRequests([]);
+            })
             .catch(err => console.error("Failed to fetch requests", err));
-    }, []);
+    }, [user]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await fetch(`${API_URL}/api/maintenance/`, {
+            const token = localStorage.getItem('esntes_token') || localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/api/communities/${user.community_id}/maintenance`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify(newRequest)
             });
-            const data = await response.json();
-            setRequests([...requests, data]);
-            setNewRequest({ title: '', description: '', category: 'General' });
+            if (response.ok) {
+                const data = await response.json();
+                setRequests([...requests, data]);
+                setNewRequest({ title: '', description: '', category: 'General' });
+            } else {
+                console.error("Failed to submit request");
+            }
         } catch (error) {
             console.error("Error submitting request", error);
         }

@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.documents import router as documents_router
@@ -15,6 +18,10 @@ from backend.voting import router as voting_router
 
 app = FastAPI(title="ESNTES HOA API", version="0.1.0")
 
+# Setup Logging
+from backend.core.logging import setup_logging
+setup_logging()
+
 # Create Database Tables
 from backend.core.database import engine, Base
 # Import models to ensure they are registered with Base
@@ -27,6 +34,8 @@ Base.metadata.create_all(bind=engine)
 origins = [
     "http://localhost:5173",  # React Frontend
     "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
     "https://main.d1h71bpojat3kb.amplifyapp.com",  # Production Frontend
 ]
 
@@ -39,21 +48,27 @@ app.add_middleware(
 )
 
 # Include Routers
-app.include_router(documents_router.router, prefix="/api/documents", tags=["documents"])
-app.include_router(maintenance_router.router, prefix="/api/maintenance", tags=["maintenance"])
-app.include_router(finance_router.router, prefix="/api/finance", tags=["finance"])
+app.include_router(documents_router.router, prefix="/api/communities", tags=["documents"])
+app.include_router(maintenance_router.router, prefix="/api/communities", tags=["maintenance"])
+app.include_router(finance_router.router, prefix="/api/communities", tags=["finance"])
 app.include_router(community_router.router, prefix="/api/community", tags=["community"])
 app.include_router(community_info.router, prefix="/api/community-info", tags=["community-info"])
 app.include_router(visitors_router.router, prefix="/api/visitors", tags=["visitors"])
 app.include_router(compliance_router.router, prefix="/api/compliance", tags=["compliance"])
 app.include_router(user_router.router, prefix="/api/user", tags=["user"])
-app.include_router(property_router.router, prefix="/api/property", tags=["property"])
-app.include_router(violations_router.router, prefix="/api/violations", tags=["violations"])
-app.include_router(calendar_router.router, prefix="/api/calendar", tags=["calendar"])
+app.include_router(property_router.router, prefix="/api/communities", tags=["property"])
+app.include_router(violations_router.router, prefix="/api/communities", tags=["violations"])
+app.include_router(calendar_router.router, prefix="/api/communities", tags=["calendar"])
 app.include_router(voting_router.router, prefix="/api/voting", tags=["voting"])
+
+from backend.dashboard import router as dashboard_router
+app.include_router(dashboard_router.router, prefix="/api/dashboard", tags=["dashboard"])
 
 from backend.admin import router as admin_router
 app.include_router(admin_router.router, prefix="/api/admin", tags=["admin"])
+
+from backend.auth import router as auth_router
+app.include_router(auth_router.router, prefix="/api/auth", tags=["auth"])
 
 @app.get("/health")
 async def health_check_root():

@@ -1,6 +1,12 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
+import json
+
+from backend.core.database import get_db
+from backend.auth.dependencies import get_current_user
+from backend.auth.models import User
 
 router = APIRouter(
     tags=["user"]
@@ -8,25 +14,25 @@ router = APIRouter(
 
 # Models
 class CommunicationPreferences(BaseModel):
-    general_email: bool
-    general_paper: bool
-    ccr_email: bool
-    ccr_paper: bool
-    collection_email: bool
-    collection_paper: bool
-    billing_email: bool
-    billing_paper: bool
-    mgmt_committee_notifications: bool
-    phone_communications: bool
+    general_email: bool = False
+    general_paper: bool = False
+    ccr_email: bool = False
+    ccr_paper: bool = False
+    collection_email: bool = False
+    collection_paper: bool = False
+    billing_email: bool = False
+    billing_paper: bool = False
+    mgmt_committee_notifications: bool = False
+    phone_communications: bool = False
 
 class UserProfile(BaseModel):
     name: str
     display_name: str
-    address: str
-    status: str  # Owner / Occupant
+    address: Optional[str] = None
+    status: Optional[str] = None  # Owner / Occupant
     email: str
-    phone: str
-    mailing_address: str
+    phone: Optional[str] = None
+    mailing_address: Optional[str] = None
     preferences: CommunicationPreferences
 
 class UserProfileUpdate(BaseModel):
@@ -35,42 +41,58 @@ class UserProfileUpdate(BaseModel):
     mailing_address: Optional[str] = None
     preferences: Optional[CommunicationPreferences] = None
 
-# Mock Data Storage
-current_profile = UserProfile(
-    name="John Doe",
-    display_name="John D.",
-    address="123 Maple St, Unit 4B",
-    status="Owner",
-    email="john.doe@example.com",
-    phone="(555) 123-4567",
-    mailing_address="123 Maple St, Unit 4B, Springfield, IL 62704",
-    preferences=CommunicationPreferences(
-        general_email=True,
-        general_paper=False,
-        ccr_email=True,
-        ccr_paper=False,
-        collection_email=True,
-        collection_paper=True,
-        billing_email=True,
-        billing_paper=False,
-        mgmt_committee_notifications=True,
-        phone_communications=False
-    )
-)
-
 @router.get("/profile", response_model=UserProfile)
-async def get_profile():
-    return current_profile
+async def get_profile(current_user: User = Depends(get_current_user)):
+    # Parse preferences from JSON string
+    prefs_dict = {}
+    if current_user.preferences:
+        try:
+            prefs_dict = json.loads(current_user.preferences)
+        except json.JSONDecodeError:
+            prefs_dict = {}
+            
+    return UserProfile(
+        name=current_user.full_name,
+        display_name=current_user.full_name,
+        address=current_user.address, # Residential Address
+        status=current_user.resident_type if current_user.resident_type else "Resident",
+        email=current_user.email,
+        phone=current_user.phone,
+        mailing_address=current_user.mailing_address, 
+        preferences=CommunicationPreferences(**prefs_dict)
+    )
 
 @router.put("/profile", response_model=UserProfile)
-async def update_profile(update: UserProfileUpdate):
-    global current_profile
+async def update_profile(update: UserProfileUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    
     if update.email:
-        current_profile.email = update.email
+        current_user.email = update.email
     if update.phone:
-        current_profile.phone = update.phone
+        current_user.phone = update.phone
     if update.mailing_address:
-        current_profile.mailing_address = update.mailing_address
+        current_user.mailing_address = update.mailing_address
+
     if update.preferences:
-        current_profile.preferences = update.preferences
-    return current_profile
+        current_user.preferences = json.dumps(update.preferences.dict())
+
+    db.commit()
+    db.refresh(current_user)
+    
+    # Re-fetch to return
+    prefs_dict = {}
+    if current_user.preferences:
+        try:
+            prefs_dict = json.loads(current_user.preferences)
+        except:
+            prefs_dict = {}
+
+    return UserProfile(
+        name=current_user.full_name,
+        display_name=current_user.full_name,
+        address=current_user.address,
+        status=current_user.resident_type if current_user.resident_type else "Resident",
+        email=current_user.email,
+        phone=current_user.phone,
+        mailing_address=current_user.mailing_address,
+        preferences=CommunicationPreferences(**prefs_dict)
+    )

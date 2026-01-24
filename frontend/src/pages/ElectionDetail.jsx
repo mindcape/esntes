@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
+// ... (imports)
+
 export default function ElectionDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -13,6 +15,21 @@ export default function ElectionDetail() {
     const [selectedCandidates, setSelectedCandidates] = useState([]);
     const [loading, setLoading] = useState(true);
     const [errored, setErrored] = useState(false);
+
+    // UI State
+    const [error, setError] = useState(null);
+    const [success, setSuccess] = useState(null);
+
+    // Auto-dismiss notifications
+    useEffect(() => {
+        if (error || success) {
+            const timer = setTimeout(() => {
+                setError(null);
+                setSuccess(null);
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [error, success]);
 
     useEffect(() => {
         // Fetch all elections to find this one
@@ -27,12 +44,14 @@ export default function ElectionDetail() {
                     }
                 } else {
                     setErrored(true);
+                    setError("Election not found or Access Denied.");
                 }
                 setLoading(false);
             })
             .catch(err => {
                 console.error(err);
                 setErrored(true);
+                setError("Failed to load election details.");
                 setLoading(false);
             });
     }, [id]);
@@ -41,11 +60,15 @@ export default function ElectionDetail() {
         fetch(`${API_URL}/api/voting/${id}/results`)
             .then(res => res.json())
             .then(data => setResults(data))
-            .catch(console.error);
+            .catch(err => {
+                console.error(err);
+                setError("Failed to load results.");
+            });
     };
 
     const toggleCandidate = (candidateId) => {
         if (!election) return;
+        setError(null);
 
         const limit = election.allowed_selections || 1;
 
@@ -57,7 +80,7 @@ export default function ElectionDetail() {
                 if (selectedCandidates.length < limit) {
                     setSelectedCandidates(prev => [...prev, candidateId]);
                 } else {
-                    alert(`You can only select up to ${limit} candidates.`);
+                    setError(`You can only select up to ${limit} candidates.`);
                 }
             }
         } else {
@@ -68,6 +91,8 @@ export default function ElectionDetail() {
 
     const handleVote = async () => {
         if (selectedCandidates.length === 0) return;
+        setError(null);
+        setSuccess(null);
 
         try {
             const res = await fetch(`${API_URL}/api/voting/vote`, {
@@ -83,19 +108,22 @@ export default function ElectionDetail() {
                 // Refresh to show results
                 const updated = { ...election, has_voted: true };
                 setElection(updated);
+                setSuccess("Vote submitted successfully!");
                 fetchResults();
             } else {
                 const err = await res.json();
-                alert(err.detail || 'Voting failed');
+                setError(err.detail || 'Voting failed');
             }
         } catch (err) {
             console.error(err);
-            alert('Error submitting vote');
+            setError('Error submitting vote');
         }
     };
 
     const handleEndElection = async () => {
         if (!window.confirm("Are you sure you want to end this election immediately?")) return;
+        setError(null);
+        setSuccess(null);
 
         try {
             const res = await fetch(`${API_URL}/api/voting/${id}/end`, {
@@ -105,14 +133,14 @@ export default function ElectionDetail() {
             if (res.ok) {
                 // Refresh election details
                 setLoading(true);
-                // Re-fetch logic or just reload page
+                setSuccess("Election ended successfully.");
                 window.location.reload();
             } else {
-                alert('Failed to end election');
+                setError('Failed to end election');
             }
         } catch (err) {
             console.error(err);
-            alert('Error ending election');
+            setError('Error ending election');
         }
     };
 
@@ -127,6 +155,18 @@ export default function ElectionDetail() {
             <button onClick={() => navigate('/elections')} className="btn" style={{ marginBottom: '1rem', border: '1px solid #ddd' }}>
                 &larr; Back to Elections
             </button>
+
+            {/* Inline Notifications */}
+            {error && (
+                <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '4px', border: '1px solid #fecaca' }}>
+                    {error}
+                </div>
+            )}
+            {success && (
+                <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#dcfce7', color: '#16a34a', borderRadius: '4px', border: '1px solid #bbf7d0' }}>
+                    {success}
+                </div>
+            )}
 
             <div className="card" style={{ marginBottom: '2rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

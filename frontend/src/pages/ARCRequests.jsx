@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
 export default function ARCRequests() {
+    const { user } = useAuth();
+    // ... (imports)
     const [requests, setRequests] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [loading, setLoading] = useState(true);
+
+    // UI State
+    const [error, setError] = useState(null);
+    const [success, setSuccess] = useState(null);
+    const [modalError, setModalError] = useState(null);
+
     const [formData, setFormData] = useState({
         resident_address: '',
         description: '',
@@ -16,32 +25,64 @@ export default function ARCRequests() {
 
     useEffect(() => {
         fetchRequests();
-    }, []);
+    }, [user]);
+
+    // Auto-dismiss notifications
+    useEffect(() => {
+        if (error || success) {
+            const timer = setTimeout(() => {
+                setError(null);
+                setSuccess(null);
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [error, success]);
 
     const fetchRequests = () => {
-        fetch(`${API_URL}/api/property/arc/my`)
-            .then(res => res.json())
+        if (!user?.community_id) return;
+        const token = localStorage.getItem('esntes_token');
+        fetch(`${API_URL}/api/communities/${user.community_id}/arc/my`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+            .then(res => {
+                if (!res.ok) throw new Error('Failed to fetch requests');
+                return res.json();
+            })
             .then(data => {
-                setRequests(data);
+                if (Array.isArray(data)) {
+                    setRequests(data);
+                } else {
+                    setRequests([]);
+                }
                 setLoading(false);
             })
             .catch(err => {
                 console.error(err);
+                setError("Failed to load ARC requests.");
                 setLoading(false);
+                setRequests([]);
             });
+    };
+
+    const handleOpenModal = () => {
+        setModalError(null);
+        setShowModal(true);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setModalError(null);
 
         // Client-side validation
         if (!formData.contractor_name || !formData.contractor_name.trim()) {
-            alert("Contractor name is required. Enter 'Self' for DIY projects.");
+            setModalError("Contractor name is required. Enter 'Self' for DIY projects.");
             return;
         }
 
         if (!formData.projected_start) {
-            alert("Projected start date is required.");
+            setModalError("Projected start date is required.");
             return;
         }
 
@@ -50,17 +91,21 @@ export default function ARCRequests() {
             const startDate = new Date(formData.projected_start);
             const endDate = new Date(formData.anticipated_end);
             if (endDate <= startDate) {
-                alert("Anticipated end date must be after the projected start date.");
+                setModalError("Anticipated end date must be after the projected start date.");
                 return;
             }
         }
 
         try {
-            const res = await fetch(`${API_URL}/api/property/arc`, {
+            const token = localStorage.getItem('esntes_token');
+            const res = await fetch(`${API_URL}/api/communities/${user.community_id}/arc`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({
-                    resident_id: 1, // Mock user ID
+                    resident_id: 0, // Placeholder, backend uses token
                     ...formData
                 })
             });
@@ -74,10 +119,15 @@ export default function ARCRequests() {
                     anticipated_end: '',
                     terms_accepted: false
                 });
+                setSuccess("ARC Request submitted successfully.");
                 fetchRequests();
+            } else {
+                const error = await res.json();
+                setModalError(error.detail || 'Failed to submit request.');
             }
         } catch (err) {
             console.error(err);
+            setModalError('Error submitting ARC request.');
         }
     };
 
@@ -98,10 +148,22 @@ export default function ARCRequests() {
         <div className="container">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <h1>My ARC Requests</h1>
-                <button onClick={() => setShowModal(true)} className="btn btn-primary">
+                <button onClick={handleOpenModal} className="btn btn-primary">
                     + New Request
                 </button>
             </div>
+
+            {/* Inline Notifications */}
+            {error && (
+                <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '4px', border: '1px solid #fecaca' }}>
+                    {error}
+                </div>
+            )}
+            {success && (
+                <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#dcfce7', color: '#16a34a', borderRadius: '4px', border: '1px solid #bbf7d0' }}>
+                    {success}
+                </div>
+            )}
 
             <div style={{ display: 'grid', gap: '1rem' }}>
                 {requests.length === 0 ? (
@@ -147,19 +209,18 @@ export default function ARCRequests() {
 
             {showModal && (
                 <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(0,0,0,0.5)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1000
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
                 }}>
                     <div className="card" style={{ width: '90%', maxWidth: '600px', maxHeight: '90vh', overflow: 'auto' }}>
                         <h2 style={{ marginBottom: '1.5rem' }}>Submit ARC Request</h2>
+
+                        {modalError && (
+                            <div style={{ padding: '0.75rem', marginBottom: '1rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '4px', border: '1px solid #fecaca' }}>
+                                {modalError}
+                            </div>
+                        )}
+
                         <form onSubmit={handleSubmit}>
                             <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
