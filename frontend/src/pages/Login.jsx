@@ -11,6 +11,7 @@ export default function Login() {
     const [error, setError] = useState('');
     const [mfaRequired, setMfaRequired] = useState(false);
     const [mfaCode, setMfaCode] = useState('');
+    const [failedAttempts, setFailedAttempts] = useState(0);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -29,9 +30,11 @@ export default function Login() {
             } else if (result) {
                 redirectUser(result);
             } else {
+                setFailedAttempts(prev => prev + 1);
                 setError(authError || 'Failed to login');
             }
         } catch (err) {
+            setFailedAttempts(prev => prev + 1);
             setError('An unexpected error occurred');
         }
     };
@@ -121,10 +124,13 @@ export default function Login() {
                                 />
                             </div>
 
-                            {/* Captcha Placeholder */}
-                            <div style={{ marginBottom: '1.5rem', padding: '0.5rem', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', textAlign: 'center', fontSize: '0.8rem', color: '#6b7280' }}>
-                                [ CAPTCHA Placeholder ]
-                            </div>
+
+                            {/* Captcha Placeholder - Only show after 2 failed attempts */}
+                            {failedAttempts >= 2 && (
+                                <div style={{ marginBottom: '1.5rem', padding: '0.5rem', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', textAlign: 'center', fontSize: '0.8rem', color: '#6b7280' }}>
+                                    [ CAPTCHA Placeholder ]
+                                </div>
+                            )}
 
                             <button
                                 type="submit"
