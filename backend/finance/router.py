@@ -10,6 +10,8 @@ from backend.finance.models import Account, Transaction as DBTransaction, Journa
 from backend.auth.models import User
 from backend.auth.dependencies import get_current_user
 from backend.community.models import Community
+from backend.finance.utils import ensure_coa_exists
+from datetime import datetime, timedelta
 
 router = APIRouter()
 
@@ -174,11 +176,23 @@ async def get_balance(
          raise HTTPException(status_code=403, detail="Not a member of this community")
          
     # Mock balance for now
-    mock_balance = 0.00
-    # Simulate finding user's AR account balance?
-    # For now, return a placeholder or zero if no delinquencies found
+    # Get User's AR balance
+    ensure_coa_exists(db, community_id)
+    ar_account = db.query(Account).filter(Account.community_id == community_id, Account.name.like("%Receivable%")).first()
     
-    return {"current_balance": mock_balance}
+    balance = 0.0
+    if ar_account:
+        result = db.query(
+            (func.sum(JournalEntry.debit) - func.sum(JournalEntry.credit)).label("balance")
+        ).filter(
+            JournalEntry.account_id == ar_account.id,
+            JournalEntry.user_id == current_user.id
+        ).first()
+        
+        if result and result.balance:
+            balance = result.balance
+            
+    return {"current_balance": balance}
 
 # --- Reports ---
 
@@ -230,8 +244,249 @@ async def get_delinquencies(
     # Permission check
     if not (current_user.role and current_user.role.name in ['board', 'admin']) and current_user.role_id != 3:
         raise HTTPException(status_code=403, detail="Board access required")
+
+    ensure_coa_exists(db, community_id)
+    
+    # 1. Get Accounts Receivable Account
+    ar_account = db.query(Account).filter(Account.community_id == community_id, Account.name.like("%Receivable%")).first()
+    if not ar_account:
+        return []
+
+    # 2. Aggregate Balances by User
+    # Query: Select user_id, sum(debit)-sum(credit) from entries where account=AR group by user_id having balance > 0
+    results = db.query(
+        JournalEntry.user_id,
+        (func.sum(JournalEntry.debit) - func.sum(JournalEntry.credit)).label("balance")
+    ).filter(
+        JournalEntry.account_id == ar_account.id,
+        JournalEntry.community_id == community_id,
+        JournalEntry.user_id.isnot(None)
+    ).group_by(JournalEntry.user_id).having(
+        (func.sum(JournalEntry.debit) - func.sum(JournalEntry.credit)) > 0
+    ).all()
+    
+    delinquents = []
+    today = datetime.utcnow()
+    
+    for row in results:
+        user_id = row.user_id
+        balance = row.balance
         
-    return mock_delinquencies
+        # Verify user still exists
+        user = db.query(User).filter(User.id == user_id).first()
+        if user:
+            # Calculate days overdue?
+            # Simplified: Find oldest unpaid debit?
+            # For now, just placeholder or calc from first transaction date?
+            days = 30 # Placeholder logic or fetch oldest open invoice date
+            
+            delinquents.append(DelinquentResident(
+                id=user.id,
+                name=user.full_name,
+                address=user.address or "Unknown",
+                balance=balance,
+                days_overdue=days
+            ))
+            
+    return delinquents
+
+@router.post("/{community_id}/finance/assessments/generate")
+async def generate_assessments(
+    community_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Verify community
+    community = db.query(Community).filter(Community.id == community_id).first()
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+        
+    # Permission check
+    if not (current_user.role and current_user.role.name in ['board', 'admin']) and current_user.role_id != 3:
+        raise HTTPException(status_code=403, detail="Board access required")
+        
+    # Ensure COA
+    ensure_coa_exists(db, community_id)
+    
+    # Get configuration due amount
+    amount = community.monthly_assessment_amount or 0.0
+    if amount <= 0:
+        return {"message": "Monthly assessment amount is 0. No assessments generated."}
+
+    # Find Accounts: AR (Asset) and Assessment Income (Revenue)
+    # Simplified lookup by code or name pattern matching
+    ar_account = db.query(Account).filter(Account.community_id == community_id, Account.name.like("%Receivable%")).first()
+    income_account = db.query(Account).filter(Account.community_id == community_id, Account.name.like("%Assessment%")).first()
+    
+    if not ar_account or not income_account:
+        raise HTTPException(status_code=500, detail="Missing required accounts (AR or Assessment Income).")
+
+    # Get Residents (Owners)
+    # Filtering usage of 'resident_type' if available, otherwise assume all residents?
+    # Based on models, resident_type='owner'
+    owners = db.query(User).filter(
+        User.community_id == community_id,
+        User.resident_type == 'owner'
+    ).all()
+    
+    # Batch Operation
+    target_date = datetime.utcnow()
+    month_str = target_date.strftime("%B %Y")
+    count = 0
+    
+    # Create one Master Transaction or Individual Transactions? Individual is better for clear sub-ledger
+    # But usually "Assessments Batch" is one transaction with many splits. 
+    # Let's do Individual for simplicity in "My Ledger" view logic.
+    
+    for owner in owners:
+        # Check if already assessed this month? (Skipping for simplicity in prototype)
+        
+        tx = DBTransaction(
+            date=target_date,
+            description=f"Monthly Assessment - {month_str}",
+            community_id=community_id,
+            reference="AUTO-ASSESS"
+        )
+        db.add(tx)
+        db.commit() # Get ID
+        
+        # DR Accounts Receivable (User ID linked)
+        entry_dr = JournalEntry(
+            transaction_id=tx.id,
+            account_id=ar_account.id,
+            debit=amount,
+            credit=0.0,
+            description=f"Assessment for {owner.full_name}",
+            community_id=community_id,
+            user_id=owner.id
+        )
+        
+        # CR Assessment Income
+        entry_cr = JournalEntry(
+            transaction_id=tx.id,
+            account_id=income_account.id,
+            debit=0.0,
+            credit=amount,
+            description="Assessment Revenue",
+            community_id=community_id
+            # No user_id needed for revenue, or maybe for tracking who paid? Revenue is general.
+        )
+        
+        db.add_all([entry_dr, entry_cr])
+        count += 1
+        
+    db.commit()
+    
+    return {"message": f"Generated assessments for {count} owners totaling ${count * amount}"}
+
+@router.post("/{community_id}/finance/assessments/late-fees")
+async def calculate_late_fees(
+    community_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Verify community
+    community = db.query(Community).filter(Community.id == community_id).first()
+    if not community:
+        raise HTTPException(status_code=404, detail="Community not found")
+        
+    # Permission check
+    if not (current_user.role and current_user.role.name in ['board', 'admin']) and current_user.role_id != 3:
+        raise HTTPException(status_code=403, detail="Board access required")
+
+    # Configuration Check
+    late_fee = community.late_fee_amount or 0.0
+    due_day = community.late_fee_due_day or 15
+    
+    if late_fee <= 0:
+         return {"message": "Late fee amount is 0. No fees assessed."}
+
+    today = datetime.utcnow()
+    # Logic: Only run if today > due_day ? Or assume admin runs it appropriately?
+    # Warn if running too early?
+    if today.day <= due_day:
+        # Just a warning in message, or strict block? Let's allow but warn.
+        pass
+
+    ensure_coa_exists(db, community_id)
+    
+    # Accounts
+    ar_account = db.query(Account).filter(Account.community_id == community_id, Account.name.like("%Receivable%")).first()
+    fee_income_account = db.query(Account).filter(Account.community_id == community_id, Account.name.like("%Late Fee%")).first()
+
+    if not ar_account or not fee_income_account:
+        # Fallback for fee income if not found?
+        if not fee_income_account:
+             # Try generic income
+             fee_income_account = db.query(Account).filter(Account.community_id == community_id, Account.name.like("%Income%")).first()
+        
+        if not ar_account or not fee_income_account:
+             raise HTTPException(status_code=500, detail="Missing AR or Income accounts.")
+
+    # Get Owners
+    owners = db.query(User).filter(
+        User.community_id == community_id,
+        User.resident_type == 'owner'
+    ).all()
+    
+    count = 0
+    month_str = today.strftime("%B %Y")
+    
+    for owner in owners:
+        # Calculate Balance
+        # Sum debits - Sum credits for this user in AR account
+        result = db.query(
+            func.sum(JournalEntry.debit).label("total_debit"),
+            func.sum(JournalEntry.credit).label("total_credit")
+        ).filter(
+            JournalEntry.account_id == ar_account.id,
+            JournalEntry.user_id == owner.id
+        ).first()
+        
+        debit = result.total_debit or 0.0
+        credit = result.total_credit or 0.0
+        balance = debit - credit
+        
+        # Threshold (e.g. > $10)
+        if balance > 10.0:
+            # Check if already charged late fee this month?
+            # Creating a transaction
+            tx = DBTransaction(
+                date=today,
+                description=f"Late Fee - {month_str}",
+                community_id=community_id,
+                reference="AUTO-FEE"
+            )
+            db.add(tx)
+            db.commit()
+            
+            # DR AR
+            entry_dr = JournalEntry(
+                transaction_id=tx.id,
+                account_id=ar_account.id,
+                debit=late_fee,
+                credit=0.0,
+                description=f"Late Fee for {owner.full_name}",
+                community_id=community_id,
+                user_id=owner.id
+            )
+            
+            # CR Income
+            entry_cr = JournalEntry(
+                transaction_id=tx.id,
+                account_id=fee_income_account.id,
+                debit=0.0,
+                credit=late_fee,
+                description="Late Fee Revenue",
+                community_id=community_id
+            )
+            
+            db.add_all([entry_dr, entry_cr])
+            count += 1
+            
+    db.commit()
+    
+    return {"message": f"Assessed late fees for {count} residents."}
 
 def calculate_balance(db: Session, account_type: AccountType, community_id: int):
     """
@@ -343,3 +598,191 @@ async def get_income_statement(
         expenses=exp_formatted,
         net_income=total_rev - total_exp
     )
+
+# --- Invoice Endpoints ---
+from backend.finance.models import Invoice, InvoiceStatus
+from backend.vendor.models import Vendor
+from backend.maintenance.models import WorkOrder
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class InvoiceCreate(BaseModel):
+    vendor_id: int
+    work_order_id: int
+    amount: float
+    file_url: Optional[str] = None
+    notes: Optional[str] = None
+    
+    class Config:
+        orm_mode = True
+
+class InvoiceOut(InvoiceCreate):
+    id: int
+    status: InvoiceStatus
+    created_at: datetime
+    paid_at: Optional[datetime]
+    vendor_name: Optional[str] = None # Helper
+    work_order_title: Optional[str] = None # Helper
+    
+    class Config:
+        orm_mode = True
+
+@router.post("/invoices", response_model=InvoiceOut)
+def create_invoice(
+    invoice: InvoiceCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Verify User is Vendor linked
+    vendor = db.query(Vendor).filter(Vendor.id == invoice.vendor_id).first()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+        
+    # If user is a vendor, ensure they match the vendor_id
+    if current_user.role.name == "vendor":
+        # Check if this user owns this vendor profile
+       if vendor.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized for this vendor")
+
+    # Verify Work Order exists and is assigned to this vendor
+    wo = db.query(WorkOrder).filter(WorkOrder.id == invoice.work_order_id).first()
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work Order not found")
+    
+    if wo.assigned_vendor_id != invoice.vendor_id:
+        raise HTTPException(status_code=400, detail="Work Order not assigned to this vendor")
+
+    new_invoice = Invoice(
+        vendor_id=invoice.vendor_id,
+        work_order_id=invoice.work_order_id,
+        community_id=wo.community_id, 
+        amount=invoice.amount,
+        file_url=invoice.file_url,
+        notes=invoice.notes,
+        status=InvoiceStatus.SUBMITTED
+    )
+    db.add(new_invoice)
+    db.commit()
+    db.refresh(new_invoice)
+    return new_invoice
+
+@router.get("/invoices", response_model=List[InvoiceOut])
+def get_invoices(
+    community_id: Optional[int] = None, # Optional if vendor checks across? Or standard pattern?
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    query = db.query(Invoice)
+
+    if current_user.role.name == "vendor":
+        # Vendor sees only their invoices
+        # Find which vendor this user is
+        vendor = db.query(Vendor).filter(Vendor.user_id == current_user.id).first()
+        if not vendor:
+             return []
+        query = query.filter(Invoice.vendor_id == vendor.id)
+        
+    elif current_user.role.name in ["board", "admin", "super_admin"]:
+        # Board sees invoices for their community
+        if not community_id:
+            # Fallback to user community
+            community_id = current_user.community_id
+            
+        query = query.filter(Invoice.community_id == community_id)
+    else:
+        # Residents? No access
+        return []
+
+    invoices = query.order_by(Invoice.created_at.desc()).all()
+    
+    # Enrich response with names
+    results = []
+    for inv in invoices:
+        # Load relationships if not eager
+        v_name = inv.vendor.name if inv.vendor else "Unknown"
+        wo_title = inv.work_order.title if inv.work_order else "Unknown"
+        
+        # Pydantic create
+        out = InvoiceOut.from_orm(inv)
+        out.vendor_name = v_name
+        out.work_order_title = wo_title
+        results.append(out)
+        
+    return results
+
+@router.post("/invoices/{invoice_id}/pay", response_model=TransactionResponse)
+def pay_invoice(
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role.name not in ["admin", "board", "super_admin"]:
+         raise HTTPException(status_code=403, detail="Not authorized")
+         
+    invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+        
+    if invoice.community_id != current_user.community_id and current_user.role_id != 3:
+         raise HTTPException(status_code=403, detail="Not authorized for this community")
+         
+    if invoice.status == InvoiceStatus.PAID:
+        raise HTTPException(status_code=400, detail="Invoice already paid")
+        
+    # Create Transaction
+    # 1. Expense Account (Maintenance Expense)
+    # 2. Asset Account (Checking)
+    # Find relevant accounts - Simplification: Use first available or hardcoded codes
+    
+    # Create Transaction
+    new_tx = DBTransaction(
+        date=datetime.utcnow(),
+        description=f"Payment for Invoice #{invoice.id} - {invoice.work_order.title}",
+        community_id=invoice.community_id,
+        reference=f"INV-{invoice.id}"
+    )
+    db.add(new_tx)
+    db.commit()
+
+    # Create Journal Entries
+    # Debit Expense
+    # Credit Asset (Cash)
+    # Finding accounts by type for simplicity
+    expense_acc = db.query(Account).filter(Account.community_id == invoice.community_id, Account.type == AccountType.EXPENSE).first()
+    asset_acc = db.query(Account).filter(Account.community_id == invoice.community_id, Account.type == AccountType.ASSET).first()
+    
+    if not expense_acc or not asset_acc:
+        # Create default ones if missing? Or error
+        # For prototype, error
+        raise HTTPException(status_code=400, detail="Missing Expense/Asset accounts for this community. Please setup Chart of Accounts.")
+
+    entry_dr = JournalEntry(
+        transaction_id=new_tx.id,
+        account_id=expense_acc.id,
+        debit=invoice.amount,
+        credit=0.0,
+        description=f"Expense: {invoice.notes or 'Vendor Payment'}",
+        community_id=invoice.community_id
+    )
+    
+    entry_cr = JournalEntry(
+        transaction_id=new_tx.id,
+        account_id=asset_acc.id,
+        debit=0.0,
+        credit=invoice.amount,
+        description="Cash Payment",
+        community_id=invoice.community_id
+    )
+    
+    db.add_all([entry_dr, entry_cr])
+    
+    # Update Invoice Status
+    invoice.status = InvoiceStatus.PAID
+    invoice.paid_at = datetime.utcnow()
+    
+    db.commit()
+    db.refresh(new_tx)
+    return new_tx
+

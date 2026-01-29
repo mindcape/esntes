@@ -32,7 +32,7 @@ export default function BoardWorkOrders() {
     const fetchWorkOrders = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/api/communities/maintenance/work-orders`, {
+            const res = await fetch(`${API_URL}/api/communities/work-orders`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('esntes_token')}` }
             });
             if (res.ok) {
@@ -63,7 +63,7 @@ export default function BoardWorkOrders() {
     const handleCreate = async (e) => {
         e.preventDefault();
         try {
-            const res = await fetch(`${API_URL}/api/communities/maintenance/work-orders`, {
+            const res = await fetch(`${API_URL}/api/communities/work-orders`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -87,7 +87,7 @@ export default function BoardWorkOrders() {
         e.preventDefault();
         if (!selectedWO) return;
         try {
-            const res = await fetch(`${API_URL}/api/communities/maintenance/work-orders/${selectedWO.id}/bids`, {
+            const res = await fetch(`${API_URL}/api/communities/work-orders/${selectedWO.id}/bids`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -117,10 +117,39 @@ export default function BoardWorkOrders() {
         }
     };
 
+    const handleAwardBid = async (bid) => {
+        if (!confirm(`Are you sure you want to award this work order to vendor? This will close other bids.`)) return;
+
+        try {
+            const res = await fetch(`${API_URL}/api/communities/work-orders/${selectedWO.id}/award/${bid.id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
+                }
+            });
+
+            if (res.ok) {
+                const updatedWO = await res.json();
+                setSelectedWO(updatedWO);
+                setWorkOrders(workOrders.map(wo => wo.id === updatedWO.id ? updatedWO : wo));
+                // Update local bids state to reflect status changes immediately if needed, 
+                // but the response logic above replaces the whole WO object which includes bids.
+                viewDetails(updatedWO);
+            } else {
+                const err = await res.json();
+                alert(`Failed to award bid: ${err.detail}`);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("An error occurred while awarding the bid.");
+        }
+    };
+
     const viewDetails = async (wo) => {
         // Fetch bids for this WO
         try {
-            const res = await fetch(`${API_URL}/api/communities/maintenance/work-orders/${wo.id}/bids`, {
+            const res = await fetch(`${API_URL}/api/communities/work-orders/${wo.id}/bids`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('esntes_token')}` }
             });
             if (res.ok) {
@@ -234,14 +263,40 @@ export default function BoardWorkOrders() {
                                     {selectedWO.bids.map(bid => {
                                         const vendor = vendors.find(v => v.id === bid.vendor_id);
                                         return (
-                                            <li key={bid.id} style={{ padding: '0.5rem', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between' }}>
+                                            <li key={bid.id} style={{
+                                                padding: '0.5rem',
+                                                borderBottom: '1px solid #eee',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                backgroundColor: bid.status === 'Accepted' ? '#f0fdf4' : (bid.status === 'Rejected' ? '#fef2f2' : 'transparent')
+                                            }}>
                                                 <div>
                                                     <strong>{vendor ? vendor.name : 'Unknown Vendor'}</strong>
                                                     <div style={{ fontSize: '0.85rem', color: '#666' }}>{bid.notes}</div>
+                                                    {bid.status !== 'Submitted' && (
+                                                        <span style={{
+                                                            fontSize: '0.75rem',
+                                                            fontWeight: 'bold',
+                                                            color: bid.status === 'Accepted' ? '#16a34a' : '#dc2626'
+                                                        }}>
+                                                            {bid.status.toUpperCase()}
+                                                        </span>
+                                                    )}
                                                 </div>
-                                                <div style={{ textAlign: 'right' }}>
-                                                    <div style={{ fontWeight: 'bold' }}>${bid.amount}</div>
-                                                    <small>{new Date(bid.submitted_at).toLocaleDateString()}</small>
+                                                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                                                    <div>
+                                                        <div style={{ fontWeight: 'bold' }}>${bid.amount}</div>
+                                                        <small>{new Date(bid.submitted_at).toLocaleDateString()}</small>
+                                                    </div>
+                                                    {selectedWO.status === 'Open' && bid.status === 'Submitted' && (
+                                                        <button
+                                                            onClick={() => handleAwardBid(bid)}
+                                                            className="btn btn-sm"
+                                                            style={{ backgroundColor: '#10b981', color: 'white', borderColor: '#10b981' }}
+                                                        >
+                                                            Award
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </li>
                                         );

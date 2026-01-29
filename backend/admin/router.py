@@ -1,9 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends, File, UploadFile
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from typing import List, Optional
 import csv
 import io
+import re
 
 from backend.core.database import get_db
 from backend.community.models import Community
@@ -80,24 +81,41 @@ class MemberCreate(BaseModel):
 
 @router.post("/communities/{community_id}/members")
 async def create_community_member(community_id: int, member: MemberCreate, db: Session = Depends(get_db)):
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Creating member in community {community_id}: email={member.email}, role={member.role_name}")
+    
     # 1. Verify Community
     community = db.query(Community).filter(Community.id == community_id).first()
     if not community:
+        logger.error(f"Community not found: {community_id}")
         raise HTTPException(status_code=404, detail="Community not found")
+    
+    logger.debug(f"Community verified: {community.name}")
         
     # 2. Check if email exists
-    if db.query(User).filter(User.email == member.email).first():
+    existing_user = db.query(User).filter(User.email == member.email).first()
+    if existing_user:
+        logger.warning(f"Member creation failed: Email already registered - {member.email}")
         raise HTTPException(status_code=400, detail="Email already registered")
+    
+    logger.debug(f"Email check passed: {member.email}")
 
     # 3. Get Role ID
     role = db.query(Role).filter(Role.name == member.role_name).first()
     if not role:
+        logger.info(f"Role '{member.role_name}' not found, creating new role")
         # Fallback creation if role doesn't exist
         role = Role(name=member.role_name, description="Created via Admin")
         db.add(role)
         db.commit()
+        logger.debug(f"Created new role: {member.role_name} (id: {role.id})")
+    else:
+        logger.debug(f"Role found: {member.role_name} (id: {role.id})")
 
     # 4. Create User
+    logger.debug(f"Creating user object for {member.email}")
     new_user = User(
         email=member.email,
         full_name=member.full_name,
@@ -114,6 +132,9 @@ async def create_community_member(community_id: int, member: MemberCreate, db: S
     
     db.add(new_user)
     db.commit()
+    
+    logger.info(f"Member created successfully: {member.email} (user_id: {new_user.id}, community: {community.name}, role: {member.role_name})")
+    
     return {"message": "Member created successfully"}
 
 class MemberUpdate(BaseModel):
@@ -325,7 +346,6 @@ class CommunityCreate(BaseModel):
     modules_enabled: Optional[dict] = {
         "finance": True,
         "arc": True,
-        "voting": True,
         "violations": True,
         "documents": True,
         "calendar": True
@@ -343,6 +363,19 @@ class CommunityCreate(BaseModel):
     poc_name: Optional[str] = None
     poc_email: Optional[str] = None
     poc_phone: Optional[str] = None
+
+    @validator('poc_email')
+    def validate_email(cls, v):
+        if v and not re.match(r"[^@]+@[^@]+\.[^@]+", v):
+            raise ValueError('Invalid email format')
+        return v
+
+    @validator('poc_phone')
+    def validate_phone(cls, v):
+        # Allow basic formats: (123) 456-7890, 123-456-7890, 1234567890, +1...
+        if v and not re.match(r'^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$', v):
+            raise ValueError('Invalid phone format')
+        return v
 
 class CommunityResponse(CommunityCreate):
     id: int
@@ -416,6 +449,18 @@ class CommunityUpdate(BaseModel):
     poc_name: Optional[str] = None
     poc_email: Optional[str] = None
     poc_phone: Optional[str] = None
+
+    @validator('poc_email')
+    def validate_email(cls, v):
+        if v and not re.match(r"[^@]+@[^@]+\.[^@]+", v):
+            raise ValueError('Invalid email format')
+        return v
+
+    @validator('poc_phone')
+    def validate_phone(cls, v):
+        if v and not re.match(r'^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$', v):
+            raise ValueError('Invalid phone format')
+        return v
 
 
 @router.get("/communities/{community_id}", response_model=CommunityResponse)

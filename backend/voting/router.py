@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
+from backend.core.dependencies import require_module
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
@@ -6,8 +7,10 @@ from backend.core.database import get_db
 from backend.voting import models, schemas
 from backend.auth.models import User
 from backend.auth.dependencies import get_current_user
+import logging
 
-router = APIRouter()
+logger = logging.getLogger(__name__)
+router = APIRouter(dependencies=[Depends(require_module("elections"))])
 
 # --- Elections ---
 

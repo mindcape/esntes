@@ -1,4 +1,4 @@
-
+import json
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
@@ -6,7 +6,7 @@ from backend.core.database import get_db
 from backend.auth.models import User
 from backend.community.models import Community
 from backend.auth.security import verify_password, get_password_hash, create_access_token
-from typing import Optional
+from typing import Optional, Union
 from backend.auth.captcha import verify_captcha_token
 
 router = APIRouter()
@@ -17,13 +17,25 @@ class LoginRequest(BaseModel):
     password: str
     captcha_token: Optional[str] = None
 
-# ... (SetupAccountRequest, Token classes unchanged)
+class SetupAccountRequest(BaseModel):
+    community_code: str
+    email: EmailStr
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    user: dict
 
 @router.post("/login", response_model=Union[Token, dict])
 def login(request: LoginRequest, db: Session = Depends(get_db)):
+    import logging
+    logger = logging.getLogger(__name__)
+    
     # Find user by email
     user = db.query(User).filter(User.email == request.email).first()
     if not user:
+        logger.warning(f"Login attempt failed: User not found for email {request.email}")
         # To prevent enumeration, we just return generic error. 
         # But for "failed attempts limiting", we technically need to track non-existent users too if we want to block IP.
         # However, requirement says "login fails after 2 tries", usually implies user account lock/captcha.
@@ -36,6 +48,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
     # Check Failed Attempts
     if user.failed_login_attempts >= 2:
         if not request.captcha_token:
+            logger.info(f"Login attempt for {request.email}: CAPTCHA required (failed attempts: {user.failed_login_attempts})")
             # Tell frontend to show captcha
             return {
                 "captcha_required": True,
@@ -44,6 +57,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         
         # Verify Captcha
         if not verify_captcha_token(request.captcha_token):
+             logger.warning(f"Login attempt for {request.email}: Invalid CAPTCHA")
              raise HTTPException(status_code=400, detail="Invalid CAPTCHA")
 
     # Check password
@@ -51,6 +65,8 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         # Increment failed attempts
         user.failed_login_attempts += 1
         db.commit()
+        
+        logger.warning(f"Login attempt failed for {request.email}: Incorrect password (attempt {user.failed_login_attempts})")
         
         detail_msg = "Incorrect email or password"
         if user.failed_login_attempts >= 2:
@@ -63,6 +79,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
     
     # Check if active
     if not user.is_active:
+         logger.warning(f"Login attempt failed for {request.email}: User account is inactive")
          raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Inactive user",
@@ -74,6 +91,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
 
     # Check MFA
     if user.mfa_enabled:
+        logger.info(f"Login for {request.email}: MFA verification required")
         return {
              "mfa_required": True,
              "email": user.email, 
@@ -97,8 +115,19 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
     if user.community:
         user_data["community"] = {
             "name": user.community.name,
-            "modules_enabled": user.community.modules_enabled
+            "modules_enabled": user.community.modules_enabled if isinstance(user.community.modules_enabled, dict) else (
+                json.loads(user.community.modules_enabled) if user.community.modules_enabled else {}
+            )
         }
+        
+    # Vendor specific data
+    if user.role and user.role.name == 'vendor':
+        from backend.vendor.models import Vendor
+        vendor_profile = db.query(Vendor).filter(Vendor.user_id == user.id).first()
+        if vendor_profile:
+            user_data["vendor_id"] = vendor_profile.id
+    
+    logger.info(f"Login successful for {request.email} (user_id: {user.id}, role: {user.role.name if user.role else 'resident'}, community_id: {user.community_id})")
     
     return {
         "access_token": access_token, 

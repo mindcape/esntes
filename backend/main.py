@@ -64,7 +64,7 @@ app.include_router(calendar_router.router, prefix="/api/communities", tags=["cal
 
 from backend.communication import router as communication_router
 app.include_router(communication_router.router, prefix="/api/communication", tags=["communication"])
-app.include_router(voting_router.router, prefix="/api/voting", tags=["voting"])
+app.include_router(voting_router.router, prefix="/api/elections", tags=["elections"])
 
 from backend.vendor import router as vendor_router
 app.include_router(vendor_router.router, prefix="/api/vendors", tags=["vendors"])
@@ -92,3 +92,5 @@ async def health_check():
 @app.get("/")
 async def root():
     return {"message": "Welcome to ESNTES HOA Management API"}
+
+# Trigger Reload

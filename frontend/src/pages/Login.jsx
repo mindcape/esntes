@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
+import ReCAPTCHA from "react-google-recaptcha";
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
     const { login, verifyMfa, error: authError } = useAuth();
@@ -12,6 +14,9 @@ export default function Login() {
     const [mfaRequired, setMfaRequired] = useState(false);
     const [mfaCode, setMfaCode] = useState('');
     const [failedAttempts, setFailedAttempts] = useState(0);
+    const [captchaVisible, setCaptchaVisible] = useState(false);
+    const [captchaToken, setCaptchaToken] = useState(null);
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -23,19 +28,22 @@ export default function Login() {
         }
 
         try {
-            const result = await login(email, password);
+            const result = await login(email, password, captchaToken);
             if (result?.mfa_required) {
                 setMfaRequired(true);
                 setError('');
+            } else if (result?.captcha_required) {
+                setCaptchaVisible(true);
+                setFailedAttempts(prev => prev + 1);
+                setError(result.message || "Security Verification Required");
             } else if (result) {
                 redirectUser(result);
             } else {
-                setFailedAttempts(prev => prev + 1);
-                setError(authError || 'Failed to login');
+                throw new Error("Login failed");
             }
         } catch (err) {
             setFailedAttempts(prev => prev + 1);
-            setError('An unexpected error occurred');
+            setError(err.message || 'An unexpected error occurred');
         }
     };
 
@@ -109,26 +117,50 @@ export default function Login() {
 
                             <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>Password</label>
-                                <input
-                                    type="password"
-                                    required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.5rem',
-                                        border: '1px solid #d1d5db',
-                                        borderRadius: '0.375rem',
-                                        boxSizing: 'border-box'
-                                    }}
-                                />
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        required
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.5rem',
+                                            paddingRight: '2.5rem',
+                                            border: '1px solid #d1d5db',
+                                            borderRadius: '0.375rem',
+                                            boxSizing: 'border-box'
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        style={{
+                                            position: 'absolute',
+                                            right: '0.5rem',
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            background: 'none',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            padding: '0',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            color: '#6b7280'
+                                        }}
+                                    >
+                                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                    </button>
+                                </div>
                             </div>
 
-
-                            {/* Captcha Placeholder - Only show after 2 failed attempts */}
-                            {failedAttempts >= 2 && (
-                                <div style={{ marginBottom: '1.5rem', padding: '0.5rem', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', textAlign: 'center', fontSize: '0.8rem', color: '#6b7280' }}>
-                                    [ CAPTCHA Placeholder ]
+                            {/* Captcha - Show after 2 failed attempts OR if backend requires it */}
+                            {(failedAttempts >= 2 || captchaVisible) && (
+                                <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
+                                    <ReCAPTCHA
+                                        sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                                        onChange={(token) => setCaptchaToken(token)}
+                                    />
                                 </div>
                             )}
 

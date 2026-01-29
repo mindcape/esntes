@@ -1,11 +1,12 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from backend.core.dependencies import require_module
 from pydantic import BaseModel
 from typing import List
 from datetime import datetime, timedelta
 import random
 import string
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_module("visitors"))])
 
 class Visitor(BaseModel):
     id: int

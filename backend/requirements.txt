@@ -13,4 +13,7 @@ requests
 python-dotenv
 aiosmtplib
 stripe
+pytest 
+pytest-asyncio 
+httpx
 

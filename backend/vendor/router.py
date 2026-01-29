@@ -8,6 +8,10 @@ from backend.auth.dependencies import get_current_user
 from backend.auth.models import User
 from backend.vendor.models import Vendor, VendorDocument, VendorPayment, VendorDocumentType
 from backend.community.models import Community
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 router = APIRouter()
 

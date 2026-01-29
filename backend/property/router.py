@@ -20,6 +20,10 @@ from backend.property.models import ARCRequest, ARCStatus
 from backend.auth.models import User
 from backend.auth.dependencies import get_current_user
 from backend.community.models import Community
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 router = APIRouter()
 

@@ -8,6 +8,10 @@ from backend.maintenance.models import MaintenanceRequest, MaintenanceStatus, Wo
 from backend.auth.models import User
 from backend.auth.dependencies import get_current_user
 from backend.community.models import Community
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 router = APIRouter()
 
@@ -194,3 +198,40 @@ def get_bids(
         raise HTTPException(status_code=404, detail="Work Order not found")
         
     return wo.bids
+
+@router.post("/work-orders/{wo_id}/award/{bid_id}", response_model=WorkOrderOut)
+def award_bid(
+    wo_id: int,
+    bid_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role.name not in ["admin", "board", "super_admin"]:
+         raise HTTPException(status_code=403, detail="Not authorized")
+    
+    wo = db.query(WorkOrder).filter(WorkOrder.id == wo_id, WorkOrder.community_id == current_user.community_id).first()
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work Order not found")
+        
+    target_bid = db.query(VendorBid).filter(VendorBid.id == bid_id, VendorBid.work_order_id == wo_id).first()
+    if not target_bid:
+        raise HTTPException(status_code=404, detail="Bid not found")
+        
+    if wo.status != WorkOrderStatus.OPEN:
+        raise HTTPException(status_code=400, detail="Work Order is not open")
+
+    # update Work Order details
+    wo.assigned_vendor_id = target_bid.vendor_id
+    wo.budget = target_bid.amount
+    wo.status = WorkOrderStatus.IN_PROGRESS
+    
+    # Update Bids
+    for bid in wo.bids:
+        if bid.id == bid_id:
+            bid.status = VendorBidStatus.ACCEPTED
+        else:
+            bid.status = VendorBidStatus.REJECTED
+            
+    db.commit()
+    db.refresh(wo)
+    return wo

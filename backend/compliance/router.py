@@ -3,6 +3,10 @@ from pydantic import BaseModel
 from typing import List
 from datetime import datetime
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 router = APIRouter()
 

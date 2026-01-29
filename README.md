@@ -9,4 +9,8 @@ Please check `.env` for configuration secrets. Do not commit secrets to this fil
 
 ## Setup
 1. Backend: `pip3 install -r requirements.txt`
-2. Frontend: `npm install` && `npm run dev`
+    source backend/venv/bin/activate
+    uvicorn backend.main:app --reload --reload-dir=backend
+2. Frontend: `npm install` 
+    cd frontend
+    npm run dev

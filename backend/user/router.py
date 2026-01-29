@@ -7,7 +7,9 @@ import json
 from backend.core.database import get_db
 from backend.auth.dependencies import get_current_user
 from backend.auth.models import User
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter(
     tags=["user"]
 )

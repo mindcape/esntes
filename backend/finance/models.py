@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship
 from backend.core.database import Base
 from datetime import datetime
 import enum
+from backend.auth.models import User
 
 class AccountType(str, enum.Enum):
     ASSET = "ASSET"
@@ -68,5 +69,37 @@ class JournalEntry(Base):
     credit = Column(Float, default=0.0)
     description = Column(String, nullable=True) # Line item description
     
+    # Sub-Ledger Link
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
     transaction = relationship("Transaction", back_populates="entries")
     account = relationship("Account", back_populates="journal_entries")
+    user = relationship("User")
+
+class InvoiceStatus(str, enum.Enum):
+    SUBMITTED = "Submitted"
+    APPROVED = "Approved"
+    PAID = "Paid"
+    REJECTED = "Rejected"
+
+class Invoice(Base):
+    __tablename__ = "invoices"
+
+    id = Column(Integer, primary_key=True, index=True)
+    vendor_id = Column(Integer, ForeignKey("vendors.id"), nullable=False)
+    work_order_id = Column(Integer, ForeignKey("work_orders.id"), nullable=False)
+    community_id = Column(Integer, ForeignKey("communities.id"), nullable=False)
+    
+    amount = Column(Float, nullable=False)
+    file_url = Column(String, nullable=True)
+    notes = Column(String, nullable=True)
+    status = Column(SQLEnum(InvoiceStatus), default=InvoiceStatus.SUBMITTED)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    paid_at = Column(DateTime, nullable=True)
+
+    # Relationships
+    vendor = relationship("Vendor")
+    work_order = relationship("WorkOrder")
+    community = relationship("Community")
+

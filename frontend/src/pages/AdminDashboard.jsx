@@ -47,6 +47,7 @@ export default function AdminDashboard() {
     // ... inside AdminDashboard component
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
+    const [modalError, setModalError] = useState(null);
 
     // Auto-dismiss notifications
     useEffect(() => {
@@ -80,10 +81,29 @@ export default function AdminDashboard() {
             });
     };
 
+    const validateForm = () => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const phoneRegex = /^\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$/;
+
+        if (!emailRegex.test(formData.poc_email)) {
+            setModalError('Invalid email format');
+            return false;
+        }
+
+        if (!phoneRegex.test(formData.poc_phone)) {
+            setModalError('Invalid phone format (e.g. 123-456-7890)');
+            return false;
+        }
+        return true;
+    };
+
     const handleCreate = async (e) => {
         e.preventDefault();
-        setError(null);
+        setModalError(null);
         setSuccess(null);
+
+        if (!validateForm()) return;
+
         try {
             const res = await fetch(`${API_URL}/api/admin/communities`, {
                 method: 'POST',
@@ -97,11 +117,11 @@ export default function AdminDashboard() {
                 setSuccess('Community created successfully!');
             } else {
                 const err = await res.json();
-                setError(`Error: ${err.detail}`);
+                setModalError(`Error: ${err.detail}`);
             }
         } catch (error) {
             console.error(error);
-            setError('Failed to connect to server');
+            setModalError('Failed to connect to server');
         }
     };
 
@@ -114,7 +134,7 @@ export default function AdminDashboard() {
                     <h1 style={{ margin: 0 }}>Super Admin Dashboard</h1>
                     <p style={{ color: '#666', marginTop: '0.5rem' }}>Overview of all Communities (HOAs)</p>
                 </div>
-                <button onClick={() => setShowModal(true)} className="btn btn-primary">
+                <button onClick={() => { setModalError(null); setShowModal(true); }} className="btn btn-primary">
                     + Onboard New Community
                 </button>
             </div>
@@ -194,7 +214,7 @@ export default function AdminDashboard() {
                             <h2 style={{ marginTop: 0 }}>Onboard New Community</h2>
 
                             {/* Modal-specific Error (in case creation fails while modal is open) */}
-                            {error && <div style={{ marginBottom: '1rem', color: '#dc2626', fontSize: '0.9rem' }}>{error}</div>}
+                            {modalError && <div style={{ marginBottom: '1rem', color: '#dc2626', fontSize: '0.9rem' }}>{modalError}</div>}
 
                             <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '80vh', overflowY: 'auto' }}>
                                 {/* Section 1: Community Details */}

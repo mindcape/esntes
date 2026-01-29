@@ -50,9 +50,42 @@ export default function CommunitySettings() {
         }
     }, [error, success]);
 
+    const STANDARD_MODULES = ['documents', 'arc', 'calendar', 'violations'];
+
+    const toggleModule = (moduleKey) => {
+        if (STANDARD_MODULES.includes(moduleKey)) return; // Prevent toggling standard modules
+
+        setCommunity(prev => ({
+            ...prev,
+            modules_enabled: {
+                ...prev.modules_enabled,
+                [moduleKey]: !prev.modules_enabled[moduleKey]
+            }
+        }));
+    };
+
+    const validateForm = () => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const phoneRegex = /^\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$/;
+
+        if (community.poc_email && !emailRegex.test(community.poc_email)) {
+            setError('Invalid email format');
+            return false;
+        }
+
+        if (community.poc_phone && !phoneRegex.test(community.poc_phone)) {
+            setError('Invalid phone format (e.g. 123-456-7890)');
+            return false;
+        }
+        return true;
+    };
+
     const handleUpdate = async () => {
         setError(null);
         setSuccess(null);
+
+        if (!validateForm()) return;
+
         try {
             const res = await fetch(`${API_URL}/api/admin/communities/${community.id}`, {
                 method: 'PUT',
@@ -62,6 +95,7 @@ export default function CommunitySettings() {
                     subdomain: community.subdomain,
                     branding_settings: community.branding_settings,
                     modules_enabled: community.modules_enabled,
+                    units_count: community.units_count,
                     // Address
                     address: community.address,
                     address2: community.address2,
@@ -186,10 +220,23 @@ export default function CommunitySettings() {
 
                             <div>
                                 <h3 style={{ marginBottom: '1rem', borderBottom: '1px solid #eee', paddingBottom: '0.5rem' }}>System Settings</h3>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Subdomain</label>
-                                <div style={{ display: 'flex', alignItems: 'center' }}>
-                                    <input type="text" value={community.subdomain || ''} onChange={e => setCommunity({ ...community, subdomain: e.target.value })} style={{ flex: 1, padding: '0.75rem', border: '1px solid #ddd', borderRadius: '4px 0 0 4px', fontSize: '1rem' }} placeholder="pinevalley" />
-                                    <span style={{ padding: '0.75rem', background: '#f5f5f5', border: '1px solid #ddd', borderLeft: 'none', borderRadius: '0 4px 4px 0', color: '#666', fontSize: '1rem' }}>.esntes.com</span>
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Subdomain</label>
+                                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                                        <input type="text" value={community.subdomain || ''} onChange={e => setCommunity({ ...community, subdomain: e.target.value })} style={{ flex: 1, padding: '0.75rem', border: '1px solid #ddd', borderRadius: '4px 0 0 4px', fontSize: '1rem' }} placeholder="pinevalley" />
+                                        <span style={{ padding: '0.75rem', background: '#f5f5f5', border: '1px solid #ddd', borderLeft: 'none', borderRadius: '0 4px 4px 0', color: '#666', fontSize: '1rem' }}>.esntes.com</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Number of Units</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={community.units_count || 0}
+                                        onChange={e => setCommunity({ ...community, units_count: parseInt(e.target.value) || 0 })}
+                                        style={{ width: '100%', padding: '0.75rem', border: '1px solid #ddd', borderRadius: '4px', fontSize: '1rem' }}
+                                        placeholder="150"
+                                    />
                                 </div>
                             </div>
                             <div>
@@ -207,12 +254,32 @@ export default function CommunitySettings() {
 
                     {activeTab === 'modules' && (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.5rem' }}>
-                            {Object.keys(community.modules_enabled).map(module => (
-                                <label key={module} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.5rem', border: '1px solid #eee', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: community.modules_enabled[module] ? '#f0f9ff' : 'white', borderColor: community.modules_enabled[module] ? '#bae6fd' : '#eee' }}>
-                                    <input type="checkbox" checked={community.modules_enabled[module]} onChange={() => toggleModule(module)} style={{ width: '20px', height: '20px' }} />
-                                    <span style={{ textTransform: 'capitalize', fontWeight: '600', fontSize: '1.1rem' }}>{module}</span>
-                                </label>
-                            ))}
+                            {Object.keys(community.modules_enabled).map(module => {
+                                const isStandard = STANDARD_MODULES.includes(module);
+                                return (
+                                    <label key={module} style={{
+                                        display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.5rem',
+                                        border: '1px solid #eee', borderRadius: '8px',
+                                        cursor: isStandard ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.2s',
+                                        backgroundColor: isStandard ? '#f1f5f9' : (community.modules_enabled[module] ? '#f0f9ff' : 'white'),
+                                        borderColor: community.modules_enabled[module] ? '#bae6fd' : '#eee',
+                                        opacity: isStandard ? 0.8 : 1
+                                    }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={community.modules_enabled[module]}
+                                            onChange={() => toggleModule(module)}
+                                            disabled={isStandard}
+                                            style={{ width: '20px', height: '20px' }}
+                                        />
+                                        <div>
+                                            <span style={{ textTransform: 'capitalize', fontWeight: '600', fontSize: '1.1rem', display: 'block' }}>{module}</span>
+                                            {isStandard && <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '500' }}>Standard (Locked)</span>}
+                                        </div>
+                                    </label>
+                                );
+                            })}
                         </div>
                     )}
 
@@ -532,12 +599,15 @@ function MembersList({ communityId }) {
 
     const handleCreate = async (e) => {
         e.preventDefault();
+        setError(null);
+        setSuccess(null);
         try {
             const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/members`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
             });
+
             if (res.ok) {
                 setShowModal(false);
                 setFormData({ full_name: '', email: '', address: '', role_name: 'resident', resident_type: 'owner', owner_type: 'individual' });
@@ -545,7 +615,8 @@ function MembersList({ communityId }) {
                 setSuccess('Member created successfully!');
             } else {
                 const err = await res.json();
-                setError(`Error: ${err.detail}`);
+                setError(err.detail || 'Failed to create member');
+                // Keep modal open on error so user can correct the issue
             }
         } catch (error) {
             console.error(error);
@@ -667,6 +738,13 @@ function MembersList({ communityId }) {
                 }}>
                     <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '0.5rem', width: '400px', maxWidth: '90%' }}>
                         <h2 style={{ marginTop: 0 }}>{formData.id ? 'Edit Member' : 'Add New Member'}</h2>
+
+                        {error && (
+                            <div style={{ padding: '0.75rem', marginBottom: '1rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '4px', border: '1px solid #fecaca', fontSize: '0.9rem' }}>
+                                {error}
+                            </div>
+                        )}
+
                         <form onSubmit={formData.id ? handleUpdate : handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Full Name</label>

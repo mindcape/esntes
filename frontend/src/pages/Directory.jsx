@@ -101,7 +101,7 @@ export default function Directory() {
 
     return (
         <div className="container">
-            <Link to="/" style={{ display: 'inline-block', marginBottom: '1rem', color: '#666', fontSize: '0.9rem' }}>← Back to Dashboard</Link>
+            <Link to="/dashboard" style={{ display: 'inline-block', marginBottom: '1rem', color: '#666', fontSize: '0.9rem' }}>← Back to Dashboard</Link>
 
             {/* Inline Notifications */}
             {error && (

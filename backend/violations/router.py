@@ -20,6 +20,10 @@ from backend.violations.models import Violation, ViolationStatus
 from backend.auth.models import User
 from backend.auth.dependencies import get_current_user
 from backend.community.models import Community
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 router = APIRouter()
 

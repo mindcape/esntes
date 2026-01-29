@@ -37,6 +37,21 @@ def migrate_db():
     except sqlite3.OperationalError:
         print("Column mailing_address already exists.")
 
+    # Advanced Auth Migrations
+    auth_cols = [
+        ("mfa_secret", "TEXT"),
+        ("mfa_enabled", "BOOLEAN DEFAULT 0"),
+        ("failed_login_attempts", "INTEGER DEFAULT 0"),
+        ("reset_token", "TEXT"),
+        ("reset_token_expires", "TIMESTAMP")
+    ]
+    for col, dtype in auth_cols:
+        try:
+            cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {dtype}")
+            print(f"Added {col} to users")
+        except sqlite3.OperationalError:
+            print(f"Column {col} already exists in users.")
+
     # Finance Tables
     print("Migrating Finance Tables...")
     cursor.execute("""

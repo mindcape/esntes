@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { API_URL } from '../config';
 
 const AuthContext = createContext(null);
 
@@ -31,7 +32,7 @@ export const AuthProvider = ({ children }) => {
             const body = { email, password };
             if (captchaToken) body.captcha_token = captchaToken;
 
-            const response = await fetch('http://localhost:8000/api/auth/login', {
+            const response = await fetch(`${API_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
@@ -67,7 +68,7 @@ export const AuthProvider = ({ children }) => {
             return data.user;
         } catch (err) {
             setError(err.message);
-            return null;
+            throw err;
         } finally {
             setLoading(false);
         }
@@ -77,21 +78,7 @@ export const AuthProvider = ({ children }) => {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch('http://localhost:8000/api/auth/verify-mfa-login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                // Note: backend expects query params for email and code? 
-                // Let's check router.py. @router.post("/verify-mfa-login")
-                // async def verify_mfa_login(email: str, code: str, ...)
-                // These are query params by default in FastAPI if not body model.
-                // I should probably change backend to expect body or send as query params.
-                // Query params easier here:
-            } // Wait, I need to check how I defined current backend endpoint.
-                // It was `async def verify_mfa_login(email: str, code: str, ...)`
-                // This expects query params. So URL should be:
-            );
-            // Let's use fetch with query params
-            const res = await fetch(`http://localhost:8000/api/auth/verify-mfa-login?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}`, {
+            const res = await fetch(`${API_URL}/api/auth/verify-mfa-login?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -108,7 +95,7 @@ export const AuthProvider = ({ children }) => {
             return data.user;
         } catch (err) {
             setError(err.message);
-            return null;
+            throw err;
         } finally {
             setLoading(false);
         }
@@ -118,7 +105,7 @@ export const AuthProvider = ({ children }) => {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch('http://localhost:8000/api/auth/setup-account', {
+            const response = await fetch(`${API_URL}/api/auth/setup-account`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, community_code: communityCode, password })
@@ -136,7 +123,7 @@ export const AuthProvider = ({ children }) => {
             return true;
         } catch (err) {
             setError(err.message);
-            return false;
+            throw err;
         } finally {
             setLoading(false);
         }

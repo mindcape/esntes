@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
+from backend.core.dependencies import require_module
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from backend.core.database import get_db
@@ -6,8 +7,10 @@ from backend.documents import models, schemas
 from backend.auth.models import User
 from backend.auth.dependencies import get_current_user
 from backend.community.models import Community
+import logging
 
-router = APIRouter()
+logger = logging.getLogger(__name__)
+router = APIRouter(dependencies=[Depends(require_module("documents"))])
 
 @router.get("/{community_id}/documents", response_model=List[schemas.Document])
 async def get_documents(

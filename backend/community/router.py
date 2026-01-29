@@ -4,7 +4,9 @@ from backend.user.router import CommunicationPreferences
 from typing import List, Optional
 from datetime import datetime, timedelta
 from enum import Enum
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 class EventType(str, Enum):
@@ -135,11 +137,15 @@ async def register_resident(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    logger.info(f"Registering resident: email={resident.email}, role={resident.role_name}, community_id={current_user.community_id}")
+    
     if not current_user.community_id:
+        logger.warning(f"Super admin attempted to add resident without community context")
         raise HTTPException(status_code=400, detail="Super Admin cannot add residents directly without selecting community context (use Admin Dashboard)")
 
     # 1. Check if email exists
     if db.query(User).filter(User.email == resident.email).first():
+        logger.warning(f"Resident registration failed: Email already registered - {resident.email}")
         raise HTTPException(status_code=400, detail="Email already registered")
     
     # 2. Get Role ID
@@ -167,18 +173,23 @@ async def register_resident(
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
+        logger.info(f"Resident registered successfully: {resident.email} (user_id: {new_user.id}, community_id: {current_user.community_id})")
         return {"message": "Resident invited successfully. Invitation email sent.", "user_id": new_user.id}
     except IntegrityError:
         db.rollback()
+        logger.error(f"Resident registration failed: IntegrityError for {resident.email}")
         raise HTTPException(status_code=400, detail="Email already registered or violates unique constraint")
     except Exception as e:
         db.rollback()
+        logger.error(f"Resident registration failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 @router.put("/residents/{user_id}")
 async def update_resident(user_id: int, resident: ResidentUpdate, db: Session = Depends(get_db)):
+    logger.info(f"Updating resident: user_id={user_id}")
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
+        logger.warning(f"Resident update failed: User not found - user_id={user_id}")
         raise HTTPException(status_code=404, detail="User not found")
     
     if resident.name: user.full_name = resident.name
@@ -195,24 +206,30 @@ async def update_resident(user_id: int, resident: ResidentUpdate, db: Session = 
 
     try:
         db.commit()
+        logger.info(f"Resident updated successfully: user_id={user_id}, email={user.email}")
         return {"message": "Resident updated successfully"}
     except IntegrityError:
         db.rollback()
+        logger.warning(f"Resident update failed: Email already registered - user_id={user_id}")
         raise HTTPException(status_code=400, detail="Email already registered")
     except Exception as e:
         db.rollback()
+        logger.error(f"Resident update failed: {str(e)} - user_id={user_id}")
         raise HTTPException(status_code=500, detail=f"Failed to update resident: {str(e)}")
 
 @router.delete("/residents/{user_id}")
 async def delete_resident(user_id: int, db: Session = Depends(get_db)):
+    logger.info(f"Deleting resident: user_id={user_id}")
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
+         logger.warning(f"Resident deletion failed: User not found - user_id={user_id}")
          raise HTTPException(status_code=404, detail="User not found")
          
     # db.delete(user) # Hard delete? Or Soft delete?
     # Let's do hard delete for now as requested, but usually soft delete is better
     db.delete(user)
     db.commit()
+    logger.info(f"Resident deleted successfully: user_id={user_id}, email={user.email}")
     return {"message": "Resident deleted successfully"}
 
     current_user.is_opted_in = status
@@ -231,15 +248,19 @@ async def reset_resident_password(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    logger.info(f"Password reset requested for user_id={user_id} by {current_user.email}")
+    
     # Verify User is Admin/Board
     if not current_user.role or current_user.role.name not in ['admin', 'board', 'super_admin']:
          # Also allow role_id 3 (super admin)
          if current_user.role_id != 3:
-             raise HTTPException(status_code=403, detail="Not authorized to reset passwords")
+              logger.warning(f"Unauthorized password reset attempt by {current_user.email} for user_id={user_id}")
+              raise HTTPException(status_code=403, detail="Not authorized to reset passwords")
 
     # Find the target user
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
+        logger.warning(f"Password reset failed: User not found - user_id={user_id}")
         raise HTTPException(status_code=404, detail="User not found")
     
     # Check if target user belongs to same community (unless super admin)
@@ -255,4 +276,5 @@ async def reset_resident_password(
     user.is_setup_complete = True 
     
     db.commit()
+    logger.info(f"Password reset successfully for user_id={user_id}, email={user.email}")
     return {"message": "Password reset successfully"}

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, JSON
+from sqlalchemy import Column, Integer, String, Boolean, JSON, Float
 from sqlalchemy.orm import relationship
 from backend.core.database import Base
 
@@ -34,7 +34,6 @@ class Community(Base):
     modules_enabled = Column(JSON, default={
         "finance": True,
         "arc": True,
-        "voting": False,
         "violations": True,
         "documents": True,
         "calendar": True,
@@ -42,6 +41,11 @@ class Community(Base):
         "elections": False
     })
     payment_gateway_id = Column(String, nullable=True)
+
+    # Assessments Settings
+    monthly_assessment_amount = Column(Float, default=0.0)
+    late_fee_amount = Column(Float, default=0.0)
+    late_fee_due_day = Column(Integer, default=15)
 
     # Establish relationship to users
     users = relationship("User", back_populates="community")

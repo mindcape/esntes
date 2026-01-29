@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from backend.core.database import Base
 from datetime import datetime
 import enum
+from backend.auth.models import User # For string reference resolution if needed, though usually not strict.
 
 class VendorDocumentType(str, enum.Enum):
     CONTRACT = "Contract"
@@ -31,6 +32,10 @@ class Vendor(Base):
     documents = relationship("VendorDocument", back_populates="vendor", cascade="all, delete-orphan")
     payments = relationship("VendorPayment", back_populates="vendor")
     community = relationship("Community")
+
+    # Link to User for Login
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    user = relationship("User", backref="vendor_profile")
 
 class VendorDocument(Base):
     __tablename__ = "vendor_documents"

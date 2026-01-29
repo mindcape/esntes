@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const NAV_ITEMS = [
-    { path: '/', label: 'Dashboard', icon: '🏠' },
+    { path: '/dashboard', label: 'Dashboard', icon: '🏠' },
     { path: '/directory', label: 'Directory', icon: '👥' },
     { path: '/calendar', label: 'Calendar', icon: '📅' },
     { path: '/violations', label: 'Violations', icon: '⚠️' },
@@ -73,6 +73,23 @@ export default function Sidebar() {
         return true;
     });
 
+    const visibleBoardItems = BOARD_ITEMS.filter(item => {
+        if (!user || user.role === 'super_admin') return true;
+        const modules = user.community?.modules_enabled || {};
+
+        if (item.path === '/board/arc' && modules.arc === false) return false;
+        if (item.path === '/board/violations' && modules.violations === false) return false;
+        if (item.path === '/board/financials' && modules.finance === false) return false;
+        // Work Orders usually tied to Maintenance, assume always on or tied to something? 
+        // Let's tie it to 'maintenance' if exists, or just keep it. 
+        // User didn't complain about work orders, but let's be safe.
+        // Assuming maintenance is core or same as 'maintenance'? Model doesn't have 'maintenance' key explicit in default list above?
+        // Wait, models.py default has: finance, arc, violations, documents, calendar, visitors, elections.
+        // It does NOT have 'maintenance'.
+
+        return true;
+    });
+
     return (
         <nav style={{
             width: isCollapsed ? '80px' : '260px',
@@ -131,7 +148,7 @@ export default function Sidebar() {
                                 <div style={{ margin: '1rem 0', borderTop: '1px solid #eee' }} />
                                 {!isCollapsed && <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#aaa', marginBottom: '0.5rem', paddingLeft: '0.5rem' }}>Board</div>}
 
-                                {BOARD_ITEMS.map((item) => (
+                                {visibleBoardItems.map((item) => (
                                     <Link
                                         key={item.path}
                                         to={item.path}

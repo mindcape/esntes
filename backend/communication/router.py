@@ -9,6 +9,10 @@ from backend.auth.models import User, Role
 from backend.auth.dependencies import get_current_user
 from backend.core.email import send_email_async
 import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 router = APIRouter()
 

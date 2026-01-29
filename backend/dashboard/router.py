@@ -10,7 +10,9 @@ from backend.calendar.models import Event
 from backend.finance.models import Account, Transaction
 from backend.violations.models import Violation
 from datetime import datetime
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get("/resident/stats")
@@ -79,6 +81,7 @@ async def get_board_dashboard_stats(
     # 4. Pending ARC
     # Need to import ARCRequest model 
     from backend.property.models import ARCRequest, ARCStatus
+
     pending_arc = db.query(ARCRequest).filter(ARCRequest.status == ARCStatus.PENDING).count()
 
     return {
