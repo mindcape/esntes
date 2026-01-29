@@ -99,8 +99,9 @@ export default function Login() {
                     {!mfaRequired ? (
                         <>
                             <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>Email Address</label>
+                                <label htmlFor="email" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>Email Address</label>
                                 <input
+                                    id="email"
                                     type="email"
                                     required
                                     value={email}
@@ -116,9 +117,10 @@ export default function Login() {
                             </div>
 
                             <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>Password</label>
+                                <label htmlFor="password" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>Password</label>
                                 <div style={{ position: 'relative' }}>
                                     <input
+                                        id="password"
                                         type={showPassword ? "text" : "password"}
                                         required
                                         value={password}

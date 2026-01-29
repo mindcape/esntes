@@ -322,16 +322,18 @@ export default function AdminDashboard() {
                                         </div>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                             <div>
-                                                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: '500' }}>Email</label>
+                                                <label htmlFor="poc_email" style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: '500' }}>Email</label>
                                                 <input
+                                                    id="poc_email"
                                                     type="email" required
                                                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
                                                     value={formData.poc_email || ''} onChange={e => setFormData({ ...formData, poc_email: e.target.value })}
                                                 />
                                             </div>
                                             <div>
-                                                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: '500' }}>Phone</label>
+                                                <label htmlFor="poc_phone" style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', fontWeight: '500' }}>Phone</label>
                                                 <input
+                                                    id="poc_phone"
                                                     type="tel" required
                                                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
                                                     value={formData.poc_phone || ''} onChange={e => setFormData({ ...formData, poc_phone: e.target.value })}

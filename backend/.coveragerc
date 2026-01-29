@@ -1,0 +1,9 @@
+
+[run]
+omit =
+    */tests/*
+    */scripts/*
+    verify_*.py
+    migrate_*.py
+    backend/core/config.py
+    backend/main.py

@@ -10,6 +10,7 @@ from backend.core.database import get_db
 from backend.community.models import Community
 from backend.auth.models import User, Role
 from backend.auth.security import get_password_hash
+from backend.auth.dependencies import get_current_user
 
 router = APIRouter()
 
@@ -384,7 +385,7 @@ class CommunityResponse(CommunityCreate):
         orm_mode = True
 
 @router.post("/communities", response_model=CommunityResponse)
-async def create_community(community: CommunityCreate, db: Session = Depends(get_db)):
+async def create_community(community: CommunityCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     # Check for duplicate name
     existing = db.query(Community).filter(Community.name == community.name).first()
     if existing:
@@ -427,7 +428,7 @@ async def create_community(community: CommunityCreate, db: Session = Depends(get
     return new_community
 
 @router.get("/communities", response_model=List[CommunityResponse])
-async def list_communities(db: Session = Depends(get_db)):
+async def list_communities(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return db.query(Community).all()
 
 class CommunityUpdate(BaseModel):
@@ -471,7 +472,7 @@ async def get_community(community_id: int, db: Session = Depends(get_db)):
     return community
 
 @router.put("/communities/{community_id}", response_model=CommunityResponse)
-async def update_community(community_id: int, community: CommunityUpdate, db: Session = Depends(get_db)):
+async def update_community(community_id: int, community: CommunityUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     db_community = db.query(Community).filter(Community.id == community_id).first()
     if not db_community:
         raise HTTPException(status_code=404, detail="Community not found")
