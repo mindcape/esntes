@@ -18,6 +18,24 @@ class SiteAdminCreate(BaseModel):
     email: str
     name: str
 
+    @validator('email')
+    def validate_email(cls, v):
+        if not re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", v):
+             raise ValueError('Invalid email format')
+        return v
+
+class RoleResponse(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
+@router.get("/roles", response_model=List[RoleResponse])
+async def get_roles(db: Session = Depends(get_db)):
+    return db.query(Role).filter(Role.name != "super_admin").all()
+
 class SiteAdminResponse(BaseModel):
     id: int
     email: str
@@ -46,6 +64,7 @@ class MemberResponse(BaseModel):
     role: str
     address: Optional[str] = None
     is_active: bool
+    is_setup_complete: bool
 
     class Config:
         orm_mode = True
@@ -68,7 +87,8 @@ async def list_community_members(community_id: int, db: Session = Depends(get_db
             email=m.email,
             role=role_name,
             address=m.address,
-            is_active=m.is_active
+            is_active=m.is_active,
+            is_setup_complete=m.is_setup_complete
         ))
     return response
 
@@ -79,6 +99,12 @@ class MemberCreate(BaseModel):
     address: Optional[str] = None
     resident_type: Optional[str] = "owner"
     owner_type: Optional[str] = "individual"
+
+    @validator('email')
+    def validate_email(cls, v):
+        if not re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", v):
+             raise ValueError('Invalid email format')
+        return v
 
 @router.post("/communities/{community_id}/members")
 async def create_community_member(community_id: int, member: MemberCreate, db: Session = Depends(get_db)):
@@ -145,7 +171,14 @@ class MemberUpdate(BaseModel):
     address: Optional[str] = None
     resident_type: Optional[str] = None
     owner_type: Optional[str] = None
+    
+    @validator('email')
+    def validate_email(cls, v):
+        if v and not re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", v):
+             raise ValueError('Invalid email format')
+        return v
     is_active: Optional[bool] = None
+    is_setup_complete: Optional[bool] = None
 
 @router.put("/communities/{community_id}/members/{user_id}")
 async def update_community_member(community_id: int, user_id: int, member: MemberUpdate, db: Session = Depends(get_db)):
@@ -166,6 +199,7 @@ async def update_community_member(community_id: int, user_id: int, member: Membe
     if member.resident_type: user.resident_type = member.resident_type
     if member.owner_type: user.owner_type = member.owner_type
     if member.is_active is not None: user.is_active = member.is_active
+    if member.is_setup_complete is not None: user.is_setup_complete = member.is_setup_complete
 
     # 4. Update Role if provided
     if member.role_name:

@@ -62,8 +62,18 @@ export default function AdminDashboard() {
 
     const fetchCommunities = () => {
         setLoading(true);
-        fetch(`${API_URL}/api/admin/communities`)
-            .then(res => res.json())
+        const token = localStorage.getItem('esntes_token');
+        fetch(`${API_URL}/api/admin/communities`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+            .then(res => {
+                if (res.status === 401) {
+                    throw new Error("Unauthorized");
+                }
+                return res.json();
+            })
             .then(data => {
                 if (Array.isArray(data)) {
                     setCommunities(data);
@@ -74,6 +84,10 @@ export default function AdminDashboard() {
             })
             .catch(err => {
                 console.error(err);
+                if (err.message === "Unauthorized") {
+                    // Maybe redirect to login or show error
+                    setModalError("Session expired. Please login again.");
+                }
                 setCommunities([]);
             })
             .finally(() => {
@@ -105,9 +119,13 @@ export default function AdminDashboard() {
         if (!validateForm()) return;
 
         try {
+            const token = localStorage.getItem('esntes_token');
             const res = await fetch(`${API_URL}/api/admin/communities`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify(formData)
             });
             if (res.ok) {

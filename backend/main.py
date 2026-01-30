@@ -25,6 +25,7 @@ setup_logging()
 # Create Database Tables
 from backend.core.database import engine, Base
 # Import models to ensure they are registered with Base
+from backend.auth import models as auth_models # Register Auth
 from backend.documents import models as document_models
 from backend.voting import models as voting_models
 from backend.vendor import models as vendor_models # Register Vendors
@@ -34,9 +35,7 @@ Base.metadata.create_all(bind=engine)
 
 # CORS Configuration
 origins = [
-    "http://localhost:5173",  # React Frontend
     "http://localhost:3000",
-    "http://127.0.0.1:5173",
     "http://127.0.0.1:3000",
     "https://main.d1h71bpojat3kb.amplifyapp.com",  # Production Frontend
 ]
@@ -57,6 +56,9 @@ app.include_router(community_router.router, prefix="/api/community", tags=["comm
 app.include_router(community_info.router, prefix="/api/community-info", tags=["community-info"])
 app.include_router(visitors_router.router, prefix="/api/visitors", tags=["visitors"])
 app.include_router(compliance_router.router, prefix="/api/compliance", tags=["compliance"])
+
+from backend.community import settings_router
+app.include_router(settings_router.router, prefix="/api/community", tags=["community-settings"])
 app.include_router(user_router.router, prefix="/api/user", tags=["user"])
 app.include_router(property_router.router, prefix="/api/communities", tags=["property"])
 app.include_router(violations_router.router, prefix="/api/communities", tags=["violations"])
@@ -81,6 +83,9 @@ app.include_router(admin_router.router, prefix="/api/admin", tags=["admin"])
 from backend.auth import router as auth_router
 app.include_router(auth_router.router, prefix="/api/auth", tags=["auth"])
 
+from backend.auth import mfa_routes
+app.include_router(mfa_routes.router, prefix="/api/auth", tags=["mfa"])
+
 @app.get("/health")
 async def health_check_root():
     return {"status": "ok"}
@@ -92,5 +97,27 @@ async def health_check():
 @app.get("/")
 async def root():
     return {"message": "Welcome to ESNTES HOA Management API"}
+
+# Startup Events
+from backend.communication.scheduler import init_scheduler
+
+@app.on_event("startup")
+def on_startup():
+# Seed Roles
+    from backend.auth.models import Role
+    from backend.core.database import SessionLocal
+    db = SessionLocal()
+    try:
+        roles = ["resident", "board", "admin", "super_admin", "treasurer", "vice_president", "president", "vendor"]
+        for r_name in roles:
+            if not db.query(Role).filter(Role.name == r_name).first():
+                db.add(Role(name=r_name, description=f"{r_name.capitalize()} Role"))
+        db.commit()
+    except Exception:
+        db.rollback()
+    finally:
+        db.close()
+
+    init_scheduler()
 
 # Trigger Reload

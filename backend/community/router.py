@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from backend.user.router import CommunicationPreferences
 from typing import List, Optional
+import re
 from datetime import datetime, timedelta
 from enum import Enum
 import logging
@@ -35,7 +36,8 @@ class DirectoryProfile(BaseModel):
     # New Fields
     resident_type: Optional[str] = None
     owner_type: Optional[str] = None
-    is_setup_complete: bool = False # Exposed for UI
+    owner_type: Optional[str] = None
+    is_setup_complete: bool = False
 
 from sqlalchemy.orm import Session
 from backend.core.database import get_db
@@ -54,14 +56,40 @@ class ResidentCreate(BaseModel):
     resident_type: Optional[str] = "owner"
     owner_type: Optional[str] = "individual"
 
+    @validator('email')
+    def validate_email(cls, v):
+        if not re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", v):
+            raise ValueError('Invalid email format')
+        return v
+
+    @validator('phone')
+    def validate_phone(cls, v):
+        if v and not re.match(r"^\+?1?\d{10,15}$", re.sub(r'[^0-9+]', '', v)):
+             raise ValueError('Invalid phone number format')
+        return v
+
 class ResidentUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
     address: Optional[str] = None
     phone: Optional[str] = None
+
+    @validator('email')
+    def validate_email(cls, v):
+        if v and not re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", v):
+            raise ValueError('Invalid email format')
+        return v
+
+    @validator('phone')
+    def validate_phone(cls, v):
+        if v and not re.match(r"^\+?1?\d{10,15}$", re.sub(r'[^0-9+]', '', v)):
+             raise ValueError('Invalid phone number format')
+        return v
     role_name: Optional[str] = None
     resident_type: Optional[str] = None
+    resident_type: Optional[str] = None
     owner_type: Optional[str] = None
+    is_setup_complete: Optional[bool] = None
 
 @router.get("/directory", response_model=List[DirectoryProfile])
 async def get_directory(
@@ -92,7 +120,8 @@ async def get_directory(
             is_opted_in=u.is_opted_in,
             preferences=None,
             resident_type=u.resident_type,
-            owner_type=u.owner_type
+            owner_type=u.owner_type,
+            is_setup_complete=u.is_setup_complete
         ))
     return profiles
 
@@ -198,6 +227,7 @@ async def update_resident(user_id: int, resident: ResidentUpdate, db: Session = 
     if resident.phone: user.phone = resident.phone
     if resident.resident_type: user.resident_type = resident.resident_type
     if resident.owner_type: user.owner_type = resident.owner_type
+    if resident.is_setup_complete is not None: user.is_setup_complete = resident.is_setup_complete
     
     if resident.role_name:
          role = db.query(Role).filter(Role.name == resident.role_name).first()

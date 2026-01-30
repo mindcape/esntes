@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
+import { Edit, Trash2, Key, Check } from 'lucide-react';
 
 export default function ManageResidents() {
     const [showModal, setShowModal] = useState(false);
@@ -85,7 +86,10 @@ export default function ManageResidents() {
                 // success message could be a toast, but usually closing modal implies success
             } else {
                 const err = await res.json();
-                setError(err.detail || 'Operation failed');
+                const errorMessage = Array.isArray(err.detail)
+                    ? err.detail.map(e => e.msg).join(', ')
+                    : (err.detail || 'Operation failed');
+                setError(errorMessage);
             }
         } catch (error) {
             console.error(error);
@@ -107,6 +111,33 @@ export default function ManageResidents() {
         setEditingId(resident.id);
         setIsEditing(true);
         setShowModal(true);
+    };
+
+    const handleApprove = async (resident) => {
+        try {
+            const res = await fetch(`${API_URL}/api/community/residents/${resident.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
+                },
+                body: JSON.stringify({ is_setup_complete: true })
+            });
+
+            if (res.ok) {
+                // Update local state instead of full refetch for better UX
+                const updatedResidents = residents.map(r =>
+                    r.id === resident.id ? { ...r, is_setup_complete: true } : r
+                );
+                setResidents(updatedResidents);
+            } else {
+                const err = await res.json();
+                setError(err.detail || 'Approval failed');
+            }
+        } catch (error) {
+            console.error(error);
+            setError('Failed to connect to server');
+        }
     };
 
     const handleDelete = async (id) => {
@@ -402,47 +433,39 @@ export default function ManageResidents() {
                                         </div>
                                     )}
                                 </td>
-                                <td style={{ padding: '1rem' }}>
-                                    {resident.is_active === false ? (
-                                        <span style={{
-                                            backgroundColor: '#fde2e2',
-                                            color: '#9b1c1c',
-                                            padding: '0.25rem 0.5rem',
-                                            borderRadius: '9999px',
-                                            fontSize: '0.75rem',
-                                            fontWeight: '500'
-                                        }}>
-                                            Deactivated
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    {!resident.is_setup_complete ? (
+                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
+                                            Pending
                                         </span>
-                                    ) : resident.is_setup_complete ? (
-                                        <span style={{
-                                            backgroundColor: '#def7ec',
-                                            color: '#03543f',
-                                            padding: '0.25rem 0.5rem',
-                                            borderRadius: '9999px',
-                                            fontSize: '0.75rem',
-                                            fontWeight: '500'
-                                        }}>
+                                    ) : resident.is_opted_in ? ( // Assuming is_opted_in is a new field for active/opted out
+                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                                             Active
                                         </span>
                                     ) : (
-                                        <span style={{
-                                            backgroundColor: '#fef3c7',
-                                            color: '#92400e',
-                                            padding: '0.25rem 0.5rem',
-                                            borderRadius: '9999px',
-                                            fontSize: '0.75rem',
-                                            fontWeight: '500'
-                                        }}>
-                                            Pending Setup
+                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                            Opted Out
                                         </span>
                                     )}
                                 </td>
                                 {isAdminOrBoard && (
                                     <td style={{ padding: '1rem', textAlign: 'center' }}>
-                                        <button onClick={() => handleEdit(resident)} className="btn" style={{ padding: '0.25rem 0.5rem', marginRight: '0.5rem' }}>Edit</button>
-                                        <button onClick={() => handleResetClick(resident.id)} className="btn" style={{ padding: '0.25rem 0.5rem', marginRight: '0.5rem', backgroundColor: '#e2e8f0', color: '#1e293b' }}>Reset Pwd</button>
-                                        <button onClick={() => handleDelete(resident.id)} className="btn" style={{ padding: '0.25rem 0.5rem', color: 'red', borderColor: 'red' }}>Delete</button>
+                                        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+                                            <button onClick={() => handleEdit(resident)} className="text-gray-600 hover:text-gray-900" title="Edit">
+                                                <Edit size={18} />
+                                            </button>
+                                            <button onClick={() => handleResetClick(resident.id)} className="text-yellow-600 hover:text-yellow-900" title="Reset Password">
+                                                <Key size={18} />
+                                            </button>
+                                            <button onClick={() => handleDelete(resident.id)} className="text-red-600 hover:text-red-900" title="Delete">
+                                                <Trash2 size={18} />
+                                            </button>
+                                            {!resident.is_setup_complete && (
+                                                <button onClick={() => handleApprove(resident)} className="text-green-600 hover:text-green-900" title="Approve">
+                                                    <Check size={18} />
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                 )}
                             </tr>

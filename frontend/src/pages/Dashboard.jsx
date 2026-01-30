@@ -93,7 +93,13 @@ const CommunityInfo = () => {
 };
 
 const ResidentDashboard = () => {
-    const [stats, setStats] = React.useState({ balance: 0, open_requests: 0, next_event: null });
+    const [stats, setStats] = React.useState({
+        balance: 0,
+        open_requests: 0,
+        next_event: null,
+        recent_activity: [],
+        quick_actions: []
+    });
 
     React.useEffect(() => {
         let isMounted = true;
@@ -112,18 +118,68 @@ const ResidentDashboard = () => {
 
     return (
         <div>
-            <h2 style={{ marginBottom: '1.5rem' }}>My Residence</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
-                <StatCard title="Current Balance" value={`$${stats.balance.toFixed(2)}`} trend={stats.balance > 0 ? "Payment Due" : "No due payments"} to="/ledger" />
-                <StatCard title="Open Requests" value={stats.open_requests} trend={stats.open_requests > 0 ? "In Progress" : "All Clear"} to="/maintenance" />
+            {/* Financial Summary */}
+            <div className="mb-6 bg-white p-6 rounded-lg shadow-sm flex justify-between items-center">
+                <div>
+                    <h2 className="text-xl font-bold text-gray-800">My Balance</h2>
+                    <p className="text-3xl font-bold mt-2">${stats.balance.toFixed(2)}</p>
+                    {stats.balance > 0 ? (
+                        <span className="text-red-500 text-sm font-medium">Payment Due</span>
+                    ) : (
+                        <span className="text-green-500 text-sm font-medium">No payments due</span>
+                    )}
+                </div>
+                {stats.balance > 0 && (
+                    <Link to="/make-payment" className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+                        Pay Now
+                    </Link>
+                )}
+            </div>
+
+            {/* Quick Actions */}
+            <h3 className="text-lg font-semibold mb-3">Quick Actions</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                {stats.quick_actions && stats.quick_actions.map((action, i) => (
+                    <Link key={i} to={action.path} className="bg-white p-4 rounded-lg shadow-sm border hover:shadow-md text-center transition">
+                        <div className="text-blue-600 mb-2 font-bold text-xl">
+                            {/* Simple Icon Mapping could go here, treating specific labels */}
+                            {action.icon === 'wrench' && '🔧'}
+                            {action.icon === 'calendar' && '📅'}
+                            {action.icon === 'folder' && '📂'}
+                        </div>
+                        <span className="font-medium text-gray-700">{action.label}</span>
+                    </Link>
+                ))}
+            </div>
+
+            {/* Main Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <StatCard title="Open Requests" value={stats.open_requests} trend={stats.open_requests > 0 ? "Tracking" : "All Clear"} to="/maintenance" />
                 <StatCard
                     title="Next Event"
-                    value={stats.next_event?.date || "No events"}
-                    trend={stats.next_event?.title || ""}
+                    value={stats.next_event?.date || "--"}
+                    trend={stats.next_event?.title || "No events"}
                     to="/calendar"
                 />
+                <div className="card">
+                    <h3 className="mb-4">Recent Activity</h3>
+                    <div className="space-y-4">
+                        {stats.recent_activity && stats.recent_activity.length > 0 ? (
+                            stats.recent_activity.map(item => (
+                                <div key={item.id} className="border-l-4 border-blue-500 pl-3">
+                                    <p className="text-sm text-gray-500">{new Date(item.date).toLocaleDateString()}</p>
+                                    <p className="font-medium">{item.title}</p>
+                                    <p className="text-xs text-gray-400 truncate">{item.description}</p>
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-gray-500 text-sm">No recent activity.</p>
+                        )}
+                    </div>
+                </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '1.5rem' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                     {/* DocumentList Removed (Hardcoded) - Replaced with link */}
                     <div className="card">

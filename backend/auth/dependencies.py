@@ -28,3 +28,18 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         raise credentials_exception
         
     return user
+
+def require_role(allowed_roles: list):
+    def role_checker(current_user: User = Depends(get_current_user)):
+        if not current_user.role or current_user.role.name not in allowed_roles:
+            # Also allow Super Admin (role_id=3 or role_name='super_admin') globally? 
+            # Ideally consistent string checks. Let's assume 'super_admin' is in allowed_roles if needed, or hardcode bypass.
+            if current_user.role and current_user.role.name == 'super_admin':
+                return current_user
+            
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Operation not permitted. Requires role: {', '.join(allowed_roles)}"
+            )
+        return current_user
+    return role_checker

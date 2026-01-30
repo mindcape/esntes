@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from backend.core.database import get_db
 from backend.violations.models import Violation, ViolationStatus
 from backend.auth.models import User
-from backend.auth.dependencies import get_current_user
+from backend.auth.dependencies import get_current_user, require_role
 from backend.community.models import Community
 import logging
 
@@ -82,13 +82,11 @@ async def get_all_violations(
     if not community:
         raise HTTPException(status_code=404, detail="Community not found")
         
-    # Permission Check (Board/Admin)
-    if current_user.role_id != 3: # If not super admin
-        if current_user.community_id != community_id:
-             raise HTTPException(status_code=403, detail="Access denied")
-        # Check if board role
-        if not (current_user.role and current_user.role.name in ['board', 'admin']):
-             raise HTTPException(status_code=403, detail="Only board members can view all violations")
+    # Permission Check (Board/Admin/VP/Treasurer)
+    # Using require_role logic inline or check role name
+    allowed = ['board', 'admin', 'vp', 'treasurer', 'super_admin']
+    if current_user.role and current_user.role.name not in allowed and current_user.role_id != 3:
+         raise HTTPException(status_code=403, detail="Board access required")
 
     return db.query(Violation).filter(
         Violation.community_id == community_id
@@ -99,19 +97,18 @@ async def create_violation(
     community_id: int,
     violation: ViolationCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_role(['board', 'admin', 'vp', 'treasurer']))
 ):
     # Verify community
     community = db.query(Community).filter(Community.id == community_id).first()
     if not community:
         raise HTTPException(status_code=404, detail="Community not found")
-
-    # Permission Check (Board/Admin)
-    if current_user.role_id != 3:
-        if current_user.community_id != community_id:
-             raise HTTPException(status_code=403, detail="Access denied")
-        if not (current_user.role and current_user.role.name in ['board', 'admin']):
-             raise HTTPException(status_code=403, detail="Only board members can log violations")
+    
+    # Community Match Check (require_role doesn't check community_id match, strictly speaking, 
+    # but usually tenant isolation is done via current_user.community_id logic or middleware.
+    # explicit check:
+    if current_user.community_id != community_id and current_user.role.name != 'super_admin':
+        raise HTTPException(status_code=403, detail="Access denied")
 
     if violation.action.lower() == "fine":
         status = ViolationStatus.FINED
@@ -144,19 +141,15 @@ async def update_violation_status(
     status: ViolationStatus, 
     fine_amount: Optional[float] = None, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_role(['vp', 'admin']))
 ):
     # Verify community context for violation
     v = db.query(Violation).filter(Violation.id == violation_id, Violation.community_id == community_id).first()
     if not v:
         raise HTTPException(status_code=404, detail="Violation not found in this community")
         
-    # Permission Check
-    if current_user.role_id != 3:
-        if current_user.community_id != community_id:
-             raise HTTPException(status_code=403, detail="Access denied")
-        if not (current_user.role and current_user.role.name in ['board', 'admin']):
-             raise HTTPException(status_code=403, detail="Only board members can update violations")
+    if current_user.community_id != community_id and current_user.role.name != 'super_admin':
+         raise HTTPException(status_code=403, detail="Access denied")
 
     v.status = status
     if fine_amount is not None and status == ViolationStatus.FINED:

@@ -8,7 +8,7 @@ from sqlalchemy import func
 from backend.core.database import get_db
 from backend.finance.models import Account, Transaction as DBTransaction, JournalEntry, AccountType
 from backend.auth.models import User
-from backend.auth.dependencies import get_current_user
+from backend.auth.dependencies import get_current_user, require_role
 from backend.community.models import Community
 from backend.finance.utils import ensure_coa_exists
 from datetime import datetime, timedelta
@@ -86,7 +86,7 @@ async def create_transaction(
     community_id: int,
     tx: TransactionCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_role(["admin", "treasurer", "board"]))
 ):
     # Verify community
     community = db.query(Community).filter(Community.id == community_id).first()
@@ -712,14 +712,19 @@ def get_invoices(
         
     return results
 
+from backend.auth.dependencies import require_role
+
 @router.post("/invoices/{invoice_id}/pay", response_model=TransactionResponse)
 def pay_invoice(
     invoice_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_role(["treasurer", "admin"])) 
 ):
-    if current_user.role.name not in ["admin", "board", "super_admin"]:
-         raise HTTPException(status_code=403, detail="Not authorized")
+    # Additional check: If treasurer, ensure same community? (Handled by simple logic below usually)
+    # Role logic handled by dependency.
+    
+    # if current_user.role.name not in ["admin", "board", "super_admin"]:
+    #      raise HTTPException(status_code=403, detail="Not authorized")
          
     invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
     if not invoice:

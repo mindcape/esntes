@@ -15,20 +15,16 @@ import logging
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+from backend.communication.models import Campaign, EmailStatus
+
 @router.get("/resident/stats")
 async def get_resident_dashboard_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     # 1. Open Requests
+    # Filtering generally for now as we lack requester_id
     open_requests = db.query(MaintenanceRequest).filter(
-        # In a real app, we'd filter by requester_id if we had it. 
-        # For now, let's just count open requests generally or by some logic.
-        # Ideally, we should add 'resident_id' to MaintenanceRequest. 
-        # But we'll count ALL open requests for visibility if we can't filter by user yet.
-        # Actually user.id check would be best if model supported it.
-        # Checking MaintenanceRequest model... it has no resident_id column in my previous view.
-        # So lets just return *some* count or 0.
         MaintenanceRequest.status != MaintenanceStatus.COMPLETED
     ).count()
 
@@ -42,14 +38,51 @@ async def get_resident_dashboard_stats(
         "title": next_event.title if next_event else "No upcoming events"
     }
 
-    # 3. Balance (Mock logic for now as Ledger is complex per user)
-    # We can query 'delinquencies' logic if available, or return 0
+    # 3. Balance (Mock logic for now)
     current_balance = 0.00 
+    
+    # 4. Recent Activity (New)
+    activities = []
+    
+    # Recent Events
+    recent_events = db.query(Event).filter(
+        Event.start_date >= datetime.utcnow()
+    ).order_by(Event.start_date.asc()).limit(3).all()
+    for e in recent_events:
+        activities.append({
+            "id": f"event-{e.id}",
+            "type": "event",
+            "title": f"Event: {e.title}",
+            "date": e.start_date.isoformat(),
+            "description": e.description[:50] + "..." if e.description else ""
+        })
+        
+    # Recent Maintenance (Community)
+    recent_maint = db.query(MaintenanceRequest).order_by(
+        MaintenanceRequest.submitted_at.desc()
+    ).limit(3).all()
+    for m in recent_maint:
+        activities.append({
+            "id": f"maint-{m.id}",
+            "type": "maintenance",
+            "title": f"Maintenance: {m.title}",
+            "date": m.submitted_at.isoformat(),
+            "description": f"Status: {m.status}"
+        })
+        
+    # Sort by date desc
+    activities.sort(key=lambda x: x['date'], reverse=True)
     
     return {
         "balance": current_balance,
         "open_requests": open_requests,
-        "next_event": next_event_data
+        "next_event": next_event_data,
+        "recent_activity": activities[:5], # Top 5 latest
+        "quick_actions": [
+            {"label": "Report Issue", "path": "/maintenance", "icon": "wrench"},
+            {"label": "Community Calendar", "path": "/calendar", "icon": "calendar"},
+            {"label": "My Documents", "path": "/documents", "icon": "folder"},
+        ]
     }
 
 @router.get("/board/stats")

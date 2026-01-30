@@ -90,8 +90,17 @@ async def test_invoice_flow(client, db_session):
     assert response.status_code == 200
     assert len(response.json()) == 1
     
-    # 5. Pay Invoice (Board)
-    app.dependency_overrides[get_current_user] = lambda: board_user
+    # Treasurer Role & User
+    if not db_session.query(Role).filter_by(name="treasurer").first():
+        r_tres = Role(id=5, name="treasurer")
+        db_session.add(r_tres)
+    
+    treasurer_user = User(email="inv_tres@test.com", full_name="Treasurer Inv", community_id=community.id, role_id=5)
+    db_session.add(treasurer_user)
+    db_session.commit()
+
+    # 5. Pay Invoice (Treasurer)
+    app.dependency_overrides[get_current_user] = lambda: treasurer_user
     
     response = await client.post(f"/api/communities/invoices/{inv_id}/pay")
     assert response.status_code == 200, response.text

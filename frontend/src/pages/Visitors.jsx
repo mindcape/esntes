@@ -10,9 +10,13 @@ export default function Visitors() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
+            const token = localStorage.getItem('esntes_token');
             const response = await fetch(`${API_URL}/api/visitors/`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     name: visitorName,
                     arrival_date: new Date(date).toISOString()

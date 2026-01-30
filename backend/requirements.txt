@@ -16,4 +16,8 @@ stripe
 pytest 
 pytest-asyncio 
 httpx
+APScheduler==3.10.1
+boto3==1.26.100
+tenacity==8.2.2
+python-multipart==0.0.6
 

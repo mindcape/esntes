@@ -9,8 +9,8 @@ export default function Elections() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        fetch(`${API_URL}/api/voting/`, {
+        const token = localStorage.getItem('esntes_token');
+        fetch(`${API_URL}/api/elections/`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }

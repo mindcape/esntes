@@ -13,6 +13,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+from backend.vendor.models import Vendor
+
 router = APIRouter()
 
 class MaintenanceCreate(BaseModel):
@@ -152,7 +154,7 @@ def update_work_order(
 # --- Bidding ---
 
 class VendorBidCreate(BaseModel):
-    vendor_id: int
+    vendor_id: Optional[int] # Optional for Vendor Users (inferred)
     amount: float
     notes: Optional[str] = None
 
@@ -171,14 +173,45 @@ def add_bid(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role.name not in ["admin", "board", "super_admin"]:
+    # Allow Vendor, Admin, Board
+    allowed = ["admin", "board", "super_admin", "vendor"]
+    if current_user.role.name not in allowed:
          raise HTTPException(status_code=403, detail="Not authorized")
     
-    wo = db.query(WorkOrder).filter(WorkOrder.id == wo_id, WorkOrder.community_id == current_user.community_id).first()
+    # Resolve Vendor ID
+    vendor_id = item.vendor_id
+    if current_user.role.name == "vendor":
+        # Find vendor profile linked to user
+        v_profile = db.query(Vendor).filter(Vendor.user_id == current_user.id).first()
+        if not v_profile:
+             raise HTTPException(status_code=400, detail="No vendor profile linked to this user")
+        vendor_id = v_profile.id
+    elif not vendor_id:
+        raise HTTPException(status_code=400, detail="Vendor ID required for manual entry")
+
+    # Verify Work Order
+    # Vendors can only bid on assignments? Or Open Bids?
+    # Assuming "Public" bidding for vendors in the community?
+    # Vendors usually bid on "Open" WOs.
+    # WO must be in user's community if user is board/admin.
+    # If Vendor, they must be in same community (v_profile.community_id).
+    
+    wo = db.query(WorkOrder).filter(WorkOrder.id == wo_id).first()
     if not wo:
         raise HTTPException(status_code=404, detail="Work Order not found")
         
-    new_bid = VendorBid(**item.dict(), work_order_id=wo_id)
+    if current_user.role.name == "vendor":
+        if wo.community_id != v_profile.community_id:
+             raise HTTPException(status_code=403, detail="Work Order not in your community")
+    elif wo.community_id != current_user.community_id and current_user.role_id != 3:
+         raise HTTPException(status_code=403, detail="Access denied")
+        
+    new_bid = VendorBid(
+        vendor_id=vendor_id,
+        work_order_id=wo_id,
+        amount=item.amount,
+        notes=item.notes
+    )
     db.add(new_bid)
     db.commit()
     db.refresh(new_bid)

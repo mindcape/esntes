@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
-import { Edit, Trash2, Key, CheckSquare, Square, UserMinus } from 'lucide-react';
+import { Edit, Trash2, Key, CheckSquare, Square, UserMinus, Check } from 'lucide-react';
 
 export default function CommunitySettings() {
     const { id } = useParams();
@@ -20,7 +20,10 @@ export default function CommunitySettings() {
 
     const fetchCommunity = () => {
         setLoading(true);
-        fetch(`${API_URL}/api/admin/communities/${id}`)
+        const token = localStorage.getItem('esntes_token');
+        fetch(`${API_URL}/api/admin/communities/${id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
             .then(res => {
                 if (!res.ok) throw new Error("Failed to fetch community");
                 return res.json();
@@ -87,9 +90,13 @@ export default function CommunitySettings() {
         if (!validateForm()) return;
 
         try {
+            const token = localStorage.getItem('esntes_token');
             const res = await fetch(`${API_URL}/api/admin/communities/${community.id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     name: community.name,
                     subdomain: community.subdomain,
@@ -330,8 +337,10 @@ function ImportResidents({ communityId }) {
         formData.append('file', fileInput.files[0]);
 
         try {
+            const token = localStorage.getItem('esntes_token');
             const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/import`, {
                 method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
                 body: formData
             });
             const data = await res.json();
@@ -383,7 +392,10 @@ function TeamSettings({ communityId }) {
 
     const fetchAdmins = () => {
         setLoading(true);
-        fetch(`${API_URL}/api/admin/communities/${communityId}/admins`)
+        const token = localStorage.getItem('esntes_token');
+        fetch(`${API_URL}/api/admin/communities/${communityId}/admins`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
             .then(res => res.json())
             .then(data => {
                 if (Array.isArray(data)) setAdmins(data);
@@ -398,9 +410,13 @@ function TeamSettings({ communityId }) {
         setError(null);
         setSuccess(null);
         try {
+            const token = localStorage.getItem('esntes_token');
             const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/admins`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify(newAdmin)
             });
             const data = await res.json();
@@ -487,7 +503,14 @@ function TeamSettings({ communityId }) {
 
 function MembersList({ communityId }) {
     const [members, setMembers] = useState([]);
+    const [roles, setRoles] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    const getRoleDisplay = (roleSlug) => {
+        if (!roleSlug) return 'Resident';
+        const role = roles.find(r => r.name === roleSlug);
+        return role ? role.description : roleSlug.charAt(0).toUpperCase() + roleSlug.slice(1);
+    };
     const [showModal, setShowModal] = useState(false);
     const [selectedUsers, setSelectedUsers] = useState(new Set());
     const [error, setError] = useState(null);
@@ -521,11 +544,25 @@ function MembersList({ communityId }) {
 
     const fetchMembers = () => {
         setLoading(true);
-        fetch(`${API_URL}/api/admin/communities/${communityId}/members`)
-            .then(res => res.json())
-            .then(data => {
-                if (Array.isArray(data)) setMembers(data);
+        const token = localStorage.getItem('esntes_token');
+
+        // Fetch Members
+        const p1 = fetch(`${API_URL}/api/admin/communities/${communityId}/members`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        }).then(res => res.json());
+
+        // Fetch Roles
+        const p2 = fetch(`${API_URL}/api/admin/roles`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        }).then(res => res.json());
+
+        Promise.all([p1, p2])
+            .then(([membersData, rolesData]) => {
+                if (Array.isArray(membersData)) setMembers(membersData);
                 else setMembers([]);
+
+                if (Array.isArray(rolesData)) setRoles(rolesData);
+
                 // Clear selection on refresh
                 setSelectedUsers(new Set());
             })
@@ -556,9 +593,13 @@ function MembersList({ communityId }) {
         if (!window.confirm(`Are you sure you want to deactivate ${selectedUsers.size} users?`)) return;
 
         try {
+            const token = localStorage.getItem('esntes_token');
             const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/members/bulk-delete`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ user_ids: Array.from(selectedUsers) })
             });
             const data = await res.json();
@@ -578,9 +619,13 @@ function MembersList({ communityId }) {
         if (!window.confirm("Are you sure you want to deactivate this user?")) return;
         // Re-use bulk delete endpoint for single user for simplicity
         try {
+            const token = localStorage.getItem('esntes_token');
             const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/members/bulk-delete`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ user_ids: [memberId] })
             });
             if (res.ok) {
@@ -596,15 +641,46 @@ function MembersList({ communityId }) {
         }
     };
 
+    const handleApprove = async (memberId) => {
+        try {
+            const token = localStorage.getItem('esntes_token');
+            const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/members/${memberId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ is_setup_complete: true })
+            });
+            if (res.ok) {
+                fetchMembers();
+                setSuccess("Member approved successfully");
+            } else {
+                const err = await res.json();
+                const errorMessage = Array.isArray(err.detail)
+                    ? err.detail.map(e => e.msg).join(', ')
+                    : (err.detail || 'Operation failed');
+                setError(`Error: ${errorMessage}`);
+            }
+        } catch (error) {
+            console.error(error);
+            setError("Failed to approve user");
+        }
+    };
+
 
     const handleCreate = async (e) => {
         e.preventDefault();
         setError(null);
         setSuccess(null);
         try {
+            const token = localStorage.getItem('esntes_token');
             const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/members`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify(formData)
             });
 
@@ -615,7 +691,10 @@ function MembersList({ communityId }) {
                 setSuccess('Member created successfully!');
             } else {
                 const err = await res.json();
-                setError(err.detail || 'Failed to create member');
+                const errorMessage = Array.isArray(err.detail)
+                    ? err.detail.map(e => e.msg).join(', ')
+                    : (err.detail || 'Failed to create member');
+                setError(`Error: ${errorMessage}`);
                 // Keep modal open on error so user can correct the issue
             }
         } catch (error) {
@@ -637,8 +716,10 @@ function MembersList({ communityId }) {
         if (!passwordResetUser) return;
 
         try {
+            const token = localStorage.getItem('esntes_token');
             const res = await fetch(`${API_URL}/api/admin/users/${passwordResetUser.id}/reset-password`, {
-                method: 'POST'
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
             if (res.ok) {
@@ -674,9 +755,13 @@ function MembersList({ communityId }) {
     const handleUpdate = async (e) => {
         e.preventDefault();
         try {
+            const token = localStorage.getItem('esntes_token');
             const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/members/${formData.id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify(formData)
             });
 
@@ -687,7 +772,10 @@ function MembersList({ communityId }) {
                 setSuccess('Member updated successfully!');
             } else {
                 const err = await res.json();
-                setError(`Error: ${err.detail}`);
+                const errorMessage = Array.isArray(err.detail)
+                    ? err.detail.map(e => e.msg).join(', ')
+                    : (err.detail || 'Operation failed');
+                setError(`Error: ${errorMessage}`);
             }
         } catch (error) {
             console.error(error);
@@ -768,9 +856,12 @@ function MembersList({ communityId }) {
                                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
                                     value={formData.role_name} onChange={e => setFormData({ ...formData, role_name: e.target.value })}
                                 >
-                                    <option value="resident">Resident</option>
-                                    <option value="board">Board Member</option>
-                                    <option value="admin">Site Admin</option>
+                                    {roles.map(role => (
+                                        <option key={role.id} value={role.name}>
+                                            {role.description}
+                                        </option>
+                                    ))}
+                                    {roles.length === 0 && <option value="resident">Resident</option>}
                                 </select>
                             </div>
                             <div>
@@ -887,15 +978,18 @@ function MembersList({ communityId }) {
                                         backgroundColor: member.role === 'admin' ? '#e0e7ff' : '#f3f4f6',
                                         color: member.role === 'admin' ? '#4f46e5' : '#374151'
                                     }}>
-                                        {member.role || 'Resident'}
+                                        {getRoleDisplay(member.role)}
                                     </span>
                                 </td>
                                 <td style={{ padding: '1rem', color: '#666' }}>{member.address || '-'}</td>
                                 <td style={{ padding: '1rem', textAlign: 'center' }}>
-                                    {member.is_active ?
-                                        <span style={{ color: '#16a34a', fontSize: '0.8rem', fontWeight: 'bold' }}>ACTIVE</span> :
+                                    {!member.is_setup_complete ? (
+                                        <span style={{ color: '#d97706', fontSize: '0.8rem', fontWeight: 'bold' }}>PENDING</span>
+                                    ) : member.is_active ? (
+                                        <span style={{ color: '#16a34a', fontSize: '0.8rem', fontWeight: 'bold' }}>ACTIVE</span>
+                                    ) : (
                                         <span style={{ color: '#dc2626', fontSize: '0.8rem', fontWeight: 'bold' }}>INACTIVE</span>
-                                    }
+                                    )}
                                 </td>
                                 <td style={{ padding: '1rem', textAlign: 'right' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem' }}>
@@ -929,6 +1023,21 @@ function MembersList({ communityId }) {
                                         >
                                             <Trash2 size={16} />
                                         </button>
+                                        {!member.is_setup_complete && (
+                                            <button
+                                                onClick={() => handleApprove(member.id)}
+                                                className="btn"
+                                                title="Approve User"
+                                                style={{
+                                                    padding: '0.4rem',
+                                                    color: '#16a34a',
+                                                    border: '1px solid #bbf7d0',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                <Check size={16} />
+                                            </button>
+                                        )}
                                     </div>
                                 </td>
                             </tr>

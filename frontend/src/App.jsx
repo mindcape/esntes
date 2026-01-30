@@ -27,6 +27,9 @@ import ManageVendors from './pages/ManageVendors';
 import BoardWorkOrders from './pages/BoardWorkOrders';
 import BoardAnnouncements from './pages/BoardAnnouncements';
 import VendorDashboard from './pages/VendorDashboard';
+import CampaignDashboard from './pages/communications/CampaignDashboard';
+import CampaignWizard from './pages/communications/CampaignWizard';
+import BoardOnboardingWizard from './pages/onboarding/BoardOnboardingWizard';
 
 import Login from './pages/Login';
 import SetupAccount from './pages/SetupAccount';
@@ -101,6 +104,13 @@ function App() {
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/community/:id" element={<CommunitySettings />} />
+
+            {/* Mass Communications */}
+            <Route path="/communications" element={<CampaignDashboard />} />
+            <Route path="/communications/new" element={<CampaignWizard />} />
+
+            {/* Onboarding */}
+            <Route path="/onboarding/setup" element={<BoardOnboardingWizard />} />
           </Route>
         </Routes>
       </Router>

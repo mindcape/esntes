@@ -20,6 +20,7 @@ const BOARD_ITEMS = [
     { path: '/board/vendors', label: 'Vendors', icon: '👷' },
     { path: '/board/work-orders', label: 'Work Orders', icon: '🛠️' },
     { path: '/board/announcements', label: 'Announcements', icon: '📢' },
+    { path: '/communications', label: 'Mass Communications', icon: '📨' },
 ];
 
 export default function Sidebar() {
