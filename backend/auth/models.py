@@ -1,6 +1,13 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from ..core.database import Base
+from sqlalchemy import Table
+
+# Association Table for Many-to-Many Role <-> Permission
+role_permissions = Table('role_permissions', Base.metadata,
+    Column('role_id', Integer, ForeignKey('roles.id')),
+    Column('permission_id', Integer, ForeignKey('permissions.id'))
+)
 
 class User(Base):
     __tablename__ = "users"
@@ -12,6 +19,7 @@ class User(Base):
     hashed_password = Column(String, nullable=True)
     is_setup_complete = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
+    user_code = Column(String, unique=True, index=True, nullable=True) # Generated Code (e.g. 5902PCD)
     
     # Advanced Auth
     mfa_secret = Column(String, nullable=True)
@@ -47,3 +55,14 @@ class Role(Base):
     description = Column(String)
     
     users = relationship("User", back_populates="role")
+    permissions = relationship("Permission", secondary=role_permissions, back_populates="roles")
+
+class Permission(Base):
+    __tablename__ = "permissions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True) # e.g. "manage_community", "view_financials"
+    scope = Column(String, index=True) # e.g. "community", "finance", "system"
+    description = Column(String)
+
+    roles = relationship("Role", secondary=role_permissions, back_populates="permissions")

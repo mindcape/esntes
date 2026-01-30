@@ -518,12 +518,29 @@ function MembersList({ communityId }) {
     const [formData, setFormData] = useState({
         full_name: '',
         email: '',
-        address: '',
         role_name: 'resident',
+        address: '',
+        phone: '',
         resident_type: 'owner',
-        owner_type: 'individual'
+        owner_type: 'individual',
+        is_active: true
     });
 
+    const formatPhoneNumber = (value) => {
+        if (!value) return value;
+        const phoneNumber = value.replace(/[^\d]/g, '');
+        const phoneNumberLength = phoneNumber.length;
+        if (phoneNumberLength < 4) return phoneNumber;
+        if (phoneNumberLength < 7) {
+            return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
+        }
+        return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+    };
+
+    const handlePhoneChange = (e) => {
+        const formatted = formatPhoneNumber(e.target.value);
+        setFormData({ ...formData, phone: formatted });
+    };
     // Password Reset State
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [passwordResetUser, setPasswordResetUser] = useState(null);
@@ -681,7 +698,10 @@ function MembersList({ communityId }) {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({
+                    ...formData,
+                    phone: formData.phone ? formData.phone.replace(/[^\d]/g, '') : ''
+                })
             });
 
             if (res.ok) {
@@ -744,6 +764,7 @@ function MembersList({ communityId }) {
             full_name: member.full_name,
             email: member.email,
             address: member.address || '',
+            phone: member.phone ? formatPhoneNumber(member.phone) : '',
             role_name: member.role || 'resident',
             resident_type: member.resident_type || 'owner',
             owner_type: member.owner_type || 'individual',
@@ -762,7 +783,10 @@ function MembersList({ communityId }) {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({
+                    ...formData,
+                    phone: formData.phone ? formData.phone.replace(/[^\d]/g, '') : ''
+                })
             });
 
             if (res.ok) {
@@ -870,6 +894,15 @@ function MembersList({ communityId }) {
                                     type="text"
                                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
                                     value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Phone</label>
+                                <input
+                                    type="tel"
+                                    placeholder="(555) 555-5555"
+                                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                                    value={formData.phone} onChange={handlePhoneChange}
                                 />
                             </div>
 

@@ -43,3 +43,21 @@ def require_role(allowed_roles: list):
             )
         return current_user
     return role_checker
+
+def require_permission(permission_name: str):
+    def permission_checker(current_user: User = Depends(get_current_user)):
+        # 1. Super Admin Bypass
+        if current_user.role and current_user.role.name == "super_admin":
+            return current_user
+            
+        # 2. Check Permissions
+        if current_user.role and current_user.role.permissions:
+             for perm in current_user.role.permissions:
+                 if perm.name == permission_name:
+                     return current_user
+        
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Operation not permitted. Requires permission: {permission_name}"
+        )
+    return permission_checker

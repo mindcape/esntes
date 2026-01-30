@@ -182,7 +182,12 @@ async def register_resident(
     if not role:
         raise HTTPException(status_code=400, detail=f"Role {resident.role_name} not found")
 
+    from backend.community.utils import generate_user_code
+    
     try:
+        # Generate Code
+        u_code = generate_user_code(db, resident.role_name, resident.address)
+        
         # 3. Create User linked to Current Community
         new_user = User(
             email=resident.email,
@@ -197,7 +202,8 @@ async def register_resident(
             resident_type=resident.resident_type,
             owner_type=resident.owner_type,
             community_id=current_user.community_id, # Link to creator's community
-            auth0_id=f"manual|{resident.email}" 
+            auth0_id=f"manual|{resident.email}",
+            user_code=u_code
         )
         db.add(new_user)
         db.commit()
@@ -223,7 +229,13 @@ async def update_resident(user_id: int, resident: ResidentUpdate, db: Session = 
     
     if resident.name: user.full_name = resident.name
     if resident.email: user.email = resident.email
-    if resident.address: user.address = resident.address
+    if resident.address: 
+        user.address = resident.address
+        # Regenerate code if address changes ?
+        # Verify if it's different
+        from backend.community.utils import generate_user_code
+        user.user_code = generate_user_code(db, user.role.name, resident.address)
+
     if resident.phone: user.phone = resident.phone
     if resident.resident_type: user.resident_type = resident.resident_type
     if resident.owner_type: user.owner_type = resident.owner_type

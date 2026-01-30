@@ -23,6 +23,22 @@ export default function ManageResidents() {
         owner_type: 'individual' // 'individual' or 'business'
     });
 
+    const formatPhoneNumber = (value) => {
+        if (!value) return value;
+        const phoneNumber = value.replace(/[^\d]/g, '');
+        const phoneNumberLength = phoneNumber.length;
+        if (phoneNumberLength < 4) return phoneNumber;
+        if (phoneNumberLength < 7) {
+            return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
+        }
+        return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+    };
+
+    const handlePhoneChange = (e) => {
+        const formatted = formatPhoneNumber(e.target.value);
+        setFormData({ ...formData, phone: formatted });
+    };
+
     const { user } = useAuth();
     const isAdminOrBoard = user?.role === 'admin' || user?.role === 'board' || user?.role === 'super_admin';
 
@@ -75,7 +91,10 @@ export default function ManageResidents() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({
+                    ...formData,
+                    phone: formData.phone ? formData.phone.replace(/[^\d]/g, '') : ''
+                })
             });
             if (res.ok) {
                 setShowModal(false);
@@ -102,7 +121,9 @@ export default function ManageResidents() {
             name: resident.name,
             email: resident.email,
             address: resident.address,
-            phone: resident.phone || '',
+            email: resident.email,
+            address: resident.address,
+            phone: resident.phone ? formatPhoneNumber(resident.phone) : '',
             role_name: 'resident', // Default, maybe should fetch?
             resident_type: resident.resident_type || 'owner',
             owner_type: resident.owner_type || 'individual',
@@ -295,8 +316,9 @@ export default function ManageResidents() {
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Phone</label>
                                 <input
                                     type="tel"
+                                    placeholder="(555) 555-5555"
                                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
-                                    value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                                    value={formData.phone} onChange={handlePhoneChange}
                                 />
                             </div>
 

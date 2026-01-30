@@ -8,9 +8,9 @@ import re
 
 from backend.core.database import get_db
 from backend.community.models import Community
-from backend.auth.models import User, Role
+from backend.auth.models import User, Role, Permission
 from backend.auth.security import get_password_hash
-from backend.auth.dependencies import get_current_user
+from backend.auth.dependencies import get_current_user, require_role, require_permission
 
 router = APIRouter()
 
@@ -32,9 +32,81 @@ class RoleResponse(BaseModel):
     class Config:
         orm_mode = True
 
+class PermissionResponse(BaseModel):
+    id: int
+    name: str # e.g. "manage_community", "view_financials"
+    scope: str # e.g. "community", "finance", "system"
+    description: Optional[str] = None
+    
+    class Config:
+        orm_mode = True
+
+class RoleCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    # Optional: permissions: List[int] = []
+
+class RoleUpdatePermissions(BaseModel):
+    permission_ids: List[int]
+
+@router.get("/permissions", response_model=List[PermissionResponse])
+async def get_permissions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin", "super_admin"]))
+):
+    return db.query(Permission).all()
+
 @router.get("/roles", response_model=List[RoleResponse])
-async def get_roles(db: Session = Depends(get_db)):
+async def get_roles(db: Session = Depends(get_db), current_user: User = Depends(require_role(["admin", "super_admin"]))):
     return db.query(Role).filter(Role.name != "super_admin").all()
+
+@router.post("/roles", response_model=RoleResponse)
+async def create_role(
+    role: RoleCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["super_admin"]))
+):
+    # Check if exists
+    existing = db.query(Role).filter(Role.name == role.name).first()
+    if existing:
+         raise HTTPException(status_code=400, detail="Role already exists")
+    
+    new_role = Role(name=role.name, description=role.description)
+    db.add(new_role)
+    db.commit()
+    db.refresh(new_role)
+    return new_role
+
+@router.get("/roles/{role_id}/permissions", response_model=List[PermissionResponse])
+async def get_role_permissions(
+    role_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin", "super_admin"]))
+):
+    role = db.query(Role).filter(Role.id == role_id).first()
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+    return role.permissions
+
+@router.put("/roles/{role_id}/permissions")
+async def update_role_permissions(
+    role_id: int, 
+    update: RoleUpdatePermissions, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["super_admin"]))
+):
+    role = db.query(Role).filter(Role.id == role_id).first()
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+        
+    # Get Permissions
+    perms = db.query(Permission).filter(Permission.id.in_(update.permission_ids)).all()
+    
+    # Update relationship
+    role.permissions = perms
+    db.commit()
+    
+    return {"message": "Permissions updated successfully", "count": len(perms)}
 
 class SiteAdminResponse(BaseModel):
     id: int
@@ -141,6 +213,9 @@ async def create_community_member(community_id: int, member: MemberCreate, db: S
     else:
         logger.debug(f"Role found: {member.role_name} (id: {role.id})")
 
+    from backend.community.utils import generate_user_code
+    u_code = generate_user_code(db, member.role_name, member.address)
+
     # 4. Create User
     logger.debug(f"Creating user object for {member.email}")
     new_user = User(
@@ -153,7 +228,8 @@ async def create_community_member(community_id: int, member: MemberCreate, db: S
         is_opted_in=True,
         resident_type=member.resident_type,
         owner_type=member.owner_type,
-        auth0_id=f"admin_created|{member.email}" 
+        auth0_id=f"admin_created|{member.email}",
+        user_code=u_code 
     )
     new_user.hashed_password = get_password_hash("welcome123")
     
@@ -195,7 +271,10 @@ async def update_community_member(community_id: int, user_id: int, member: Membe
     # 3. Update Fields
     if member.full_name: user.full_name = member.full_name
     if member.email: user.email = member.email
-    if member.address: user.address = member.address
+    if member.address: 
+        user.address = member.address
+        from backend.community.utils import generate_user_code
+        user.user_code = generate_user_code(db, user.role.name, member.address)
     if member.resident_type: user.resident_type = member.resident_type
     if member.owner_type: user.owner_type = member.owner_type
     if member.is_active is not None: user.is_active = member.is_active
