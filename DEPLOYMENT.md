@@ -41,7 +41,7 @@ This guide walks you through deploying the **ESNTES HOA Portal** using **AWS Amp
         -   **Image**: (Wait, App Runner Source Code supports Python runtimes directly OR Docker. Since we have a `Dockerfile` in the root, select **Source Code Repo** -> **Configure your build**).
         -   Actually, for Source Code, it asks for build commands. 
         -   **EASIEST WAY**: Select **"Source Code Repository"**. Under "Configure build", select **"Use a configuration file"** is fine, OR **"Configure here"**:
-            -   **Runtime**: Python 3.9
+            -   **Runtime**: Python 3.13
             -   **Build command**: `pip install -r backend/requirements.txt`
             -   **Start command**: `uvicorn backend.main:app --host 0.0.0.0 --port 8080`
             -   **Port**: 8080
