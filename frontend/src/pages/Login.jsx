@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import ReCAPTCHA from "react-google-recaptcha";
@@ -7,6 +7,7 @@ import { Eye, EyeOff } from 'lucide-react';
 export default function Login() {
     const { login, verifyMfa, error: authError } = useAuth();
     const navigate = useNavigate();
+    const recaptchaRef = useRef(null);
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -35,6 +36,13 @@ export default function Login() {
             } else if (result?.captcha_required) {
                 setCaptchaVisible(true);
                 setFailedAttempts(prev => prev + 1);
+
+                // Reset captcha if it was visible and used
+                if (captchaToken) {
+                    recaptchaRef.current?.reset();
+                    setCaptchaToken(null);
+                }
+
                 setError(result.message || "Security Verification Required");
             } else if (result) {
                 redirectUser(result);
@@ -43,7 +51,24 @@ export default function Login() {
             }
         } catch (err) {
             setFailedAttempts(prev => prev + 1);
-            setError(err.message || 'An unexpected error occurred');
+
+            // Reset captcha on any failure to ensure a fresh token is always required
+            if (recaptchaRef.current) {
+                recaptchaRef.current.reset();
+            }
+            setCaptchaToken(null);
+
+            // Check for Account Locked message
+            const errorMessage = err.message || 'An unexpected error occurred';
+            if (errorMessage.includes("Account locked")) {
+                setError(
+                    <span>
+                        Account locked. Please <a href="mailto:admin@example.com" style={{ color: '#991b1b', fontWeight: 'bold' }}>contact your administrator</a> to unlock it.
+                    </span>
+                );
+            } else {
+                setError(errorMessage);
+            }
         }
     };
 
@@ -160,6 +185,7 @@ export default function Login() {
                             {(failedAttempts >= 2 || captchaVisible) && (
                                 <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
                                     <ReCAPTCHA
+                                        ref={recaptchaRef}
                                         sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
                                         onChange={(token) => setCaptchaToken(token)}
                                     />

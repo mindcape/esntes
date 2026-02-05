@@ -135,8 +135,16 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('esntes_token');
     };
 
+    const hasPermission = (permissionName) => {
+        if (!user || !user.permissions) return false;
+        if (Array.isArray(permissionName)) {
+            return permissionName.some(p => user.permissions.includes(p));
+        }
+        return user.permissions.includes(permissionName);
+    };
+
     return (
-        <AuthContext.Provider value={{ user, login, logout, setupAccount, verifyMfa, loading, error }}>
+        <AuthContext.Provider value={{ user, login, logout, setupAccount, verifyMfa, loading, error, hasPermission }}>
             {children}
         </AuthContext.Provider>
     );

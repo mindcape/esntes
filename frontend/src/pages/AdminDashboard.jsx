@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 export default function AdminDashboard() {
     const { user, login } = useAuth();
+    const canManageCommunities = user?.permissions?.includes('manage_communities');
     const navigate = useNavigate();
     const [communities, setCommunities] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -19,18 +20,18 @@ export default function AdminDashboard() {
 
 
     useEffect(() => {
-        if (user && user.role === 'super_admin') {
+        if (canManageCommunities) {
             fetchCommunities();
         }
     }, [user]);
 
     // Handle Unauthenticated State
-    if (!user || user.role !== 'super_admin') {
+    if (!canManageCommunities) {
         return (
             <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
                 <div className="card" style={{ width: '350px', padding: '2rem', textAlign: 'center' }}>
                     <h1 style={{ marginBottom: '1.5rem', fontSize: '1.5rem' }}>Admin Portal</h1>
-                    {user && <div style={{ color: 'red', marginBottom: '1rem' }}>Access Denied: You are logged in as {user.role}</div>}
+                    {user && <div style={{ color: 'red', marginBottom: '1rem' }}>Access Denied: You do not have permission to manage communities.</div>}
                     <p style={{ color: '#666', marginBottom: '2rem' }}>Please log in with administrative credentials.</p>
                     <button
                         onClick={() => login('super_admin')}

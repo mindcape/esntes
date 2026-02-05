@@ -112,22 +112,35 @@ class SiteAdminResponse(BaseModel):
     id: int
     email: str
     full_name: str
+    role_name: str
     
     class Config:
         orm_mode = True
 
 @router.get("/communities/{community_id}/admins", response_model=List[SiteAdminResponse])
 async def list_site_admins(community_id: int, db: Session = Depends(get_db)):
-    # Get Admin Role
-    admin_role = db.query(Role).filter(Role.name == "admin").first()
-    if not admin_role:
-        raise HTTPException(status_code=500, detail="Admin role not configured")
+    # Define team roles
+    target_roles = ["admin", "president", "vice_president", "treasurer", "board"]
+    
+    roles = db.query(Role).filter(Role.name.in_(target_roles)).all()
+    role_ids = [r.id for r in roles]
 
-    admins = db.query(User).filter(
+    team_members = db.query(User).filter(
         User.community_id == community_id,
-        User.role_id == admin_role.id
+        User.role_id.in_(role_ids)
     ).all()
-    return admins
+    
+    # Map to response with role name
+    response = []
+    for user in team_members:
+        response.append(SiteAdminResponse(
+            id=user.id,
+            email=user.email,
+            full_name=user.full_name,
+            role_name=user.role.name if user.role else "Unknown"
+        ))
+        
+    return response
 
 class MemberResponse(BaseModel):
     id: int
@@ -334,6 +347,8 @@ async def reset_user_password(user_id: int, request: ResetPasswordRequest = None
         new_password = ''.join(secrets.choice(alphabet) for i in range(10))
     
     user.hashed_password = get_password_hash(new_password)
+    user.is_locked = False
+    user.failed_login_attempts = 0
     db.commit()
     
     return {"message": "Password reset successfully", "new_password": new_password}

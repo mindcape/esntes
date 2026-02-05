@@ -25,6 +25,7 @@ class User(Base):
     mfa_secret = Column(String, nullable=True)
     mfa_enabled = Column(Boolean, default=False)
     failed_login_attempts = Column(Integer, default=0)
+    is_locked = Column(Boolean, default=False)
     reset_token = Column(String, nullable=True)
     reset_token_expires = Column(DateTime, nullable=True)
     

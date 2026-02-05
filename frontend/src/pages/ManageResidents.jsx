@@ -40,7 +40,8 @@ export default function ManageResidents() {
     };
 
     const { user } = useAuth();
-    const isAdminOrBoard = user?.role === 'admin' || user?.role === 'board' || user?.role === 'super_admin';
+    // const isAdminOrBoard = user?.role === 'admin' || user?.role === 'board' || user?.role === 'super_admin';
+    const canManageResidents = user?.permissions?.includes('manage_residents');
 
     useEffect(() => {
         fetchResidents();
@@ -50,7 +51,7 @@ export default function ManageResidents() {
         setLoading(true);
         setError('');
         // Residents see directory (opt-in only), Admins see everyone
-        const endpoint = isAdminOrBoard
+        const endpoint = canManageResidents
             ? `${API_URL}/api/community/all-residents`
             : `${API_URL}/api/community/directory`;
 
@@ -119,8 +120,6 @@ export default function ManageResidents() {
     const handleEdit = (resident) => {
         setFormData({
             name: resident.name,
-            email: resident.email,
-            address: resident.address,
             email: resident.email,
             address: resident.address,
             phone: resident.phone ? formatPhoneNumber(resident.phone) : '',
@@ -240,8 +239,8 @@ export default function ManageResidents() {
     return (
         <div className="container">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h1 style={{ margin: 0 }}>{isAdminOrBoard ? 'Manage Residents' : 'Resident Directory'}</h1>
-                {isAdminOrBoard && (
+                <h1 style={{ margin: 0 }}>{canManageResidents ? 'Manage Residents' : 'Resident Directory'}</h1>
+                {canManageResidents && (
                     <button onClick={() => {
                         setIsEditing(false);
                         setFormData({ name: '', email: '', address: '', phone: '', role_name: 'resident', resident_type: 'owner', owner_type: 'individual' });
@@ -419,7 +418,7 @@ export default function ManageResidents() {
                             <th style={{ padding: '1rem', color: '#666' }}>Communication Preferences</th>
                             <th style={{ padding: '1rem', color: '#666' }}>Type</th>
                             <th style={{ padding: '1rem', color: '#666' }}>Status</th>
-                            {isAdminOrBoard && <th style={{ padding: '1rem', color: '#666', textAlign: 'center' }}>Actions</th>}
+                            {canManageResidents && <th style={{ padding: '1rem', color: '#666', textAlign: 'center' }}>Actions</th>}
                         </tr>
                     </thead>
                     <tbody>
@@ -470,7 +469,7 @@ export default function ManageResidents() {
                                         </span>
                                     )}
                                 </td>
-                                {isAdminOrBoard && (
+                                {canManageResidents && (
                                     <td style={{ padding: '1rem', textAlign: 'center' }}>
                                         <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
                                             <button onClick={() => handleEdit(resident)} className="text-gray-600 hover:text-gray-900" title="Edit">

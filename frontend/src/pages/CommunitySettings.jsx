@@ -2,21 +2,34 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
-import { Edit, Trash2, Key, CheckSquare, Square, UserMinus, Check } from 'lucide-react';
+import { Edit, Trash2, Key, CheckSquare, Square, UserMinus, Check, User } from 'lucide-react';
 
 export default function CommunitySettings() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { user } = useAuth();
+    const canManageSettings = user?.permissions?.includes('manage_community_settings');
+
+    useEffect(() => {
+        console.log("user", user);
+        if (canManageSettings) {
+            fetchCommunity();
+        }
+    }, [id, user]);
+
+    if (!canManageSettings) {
+        return (
+            <div className="container" style={{ textAlign: 'center', marginTop: '4rem' }}>
+                <h2>Access Denied</h2>
+                <p>You do not have permission to manage community settings.</p>
+                <button onClick={() => navigate('/')} className="btn" style={{ marginTop: '1rem' }}>Return Home</button>
+            </div>
+        );
+    }
 
     const [community, setCommunity] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('general');
-
-
-    useEffect(() => {
-        fetchCommunity();
-    }, [id]);
 
     const fetchCommunity = () => {
         setLoading(true);
@@ -382,7 +395,6 @@ function ImportResidents({ communityId }) {
 function TeamSettings({ communityId }) {
     const [admins, setAdmins] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [newAdmin, setNewAdmin] = useState({ name: '', email: '' });
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
 
@@ -405,34 +417,6 @@ function TeamSettings({ communityId }) {
             .finally(() => setLoading(false));
     };
 
-    const handleAddAdmin = async (e) => {
-        e.preventDefault();
-        setError(null);
-        setSuccess(null);
-        try {
-            const token = localStorage.getItem('esntes_token');
-            const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/admins`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(newAdmin)
-            });
-            const data = await res.json();
-            if (res.ok) {
-                setSuccess(data.message);
-                setNewAdmin({ name: '', email: '' });
-                fetchAdmins();
-            } else {
-                setError("Error: " + data.detail);
-            }
-        } catch (error) {
-            console.error(error);
-            setError("Failed to add admin");
-        }
-    };
-
     return (
         <div style={{ maxWidth: '800px' }}>
             <h3 style={{ marginTop: 0 }}>Step 2: Assign Site Admin</h3>
@@ -441,61 +425,29 @@ function TeamSettings({ communityId }) {
             {error && <div style={{ padding: '0.75rem', marginBottom: '1rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '4px' }}>{error}</div>}
             {success && <div style={{ padding: '0.75rem', marginBottom: '1rem', backgroundColor: '#dcfce7', color: '#16a34a', borderRadius: '4px' }}>{success}</div>}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 2fr) 1fr', gap: '2rem' }}>
-                <div>
-                    <h4 style={{ marginBottom: '1rem' }}>Existing Admins</h4>
-                    {/* ... (Existing admins list same as before) ... */}
-                    {loading ? (
-                        <div>Loading...</div>
-                    ) : admins.length === 0 ? (
-                        <div style={{ padding: '1rem', background: '#f5f5f5', borderRadius: '4px', textAlign: 'center', color: '#666' }}>
-                            No admins assigned yet.
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            {admins.map(admin => (
-                                <div key={admin.id} style={{ padding: '1rem', border: '1px solid #eee', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div>
-                                        <div style={{ fontWeight: '600' }}>{admin.full_name}</div>
-                                        <div style={{ fontSize: '0.9rem', color: '#666' }}>{admin.email}</div>
-                                    </div>
-                                    <span className="status-badge status-open">Admin</span>
+            <div>
+                <h4 style={{ marginBottom: '1rem' }}>Existing Admins</h4>
+                {loading ? (
+                    <div>Loading...</div>
+                ) : admins.length === 0 ? (
+                    <div style={{ padding: '1rem', background: '#f5f5f5', borderRadius: '4px', textAlign: 'center', color: '#666' }}>
+                        No admins assigned yet.
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {admins.map(admin => (
+                            <div key={admin.id} style={{ padding: '1rem', border: '1px solid #eee', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <div style={{ fontWeight: '600' }}>{admin.full_name}</div>
+                                    <div style={{ fontSize: '0.9rem', color: '#666' }}>{admin.email}</div>
                                 </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '8px', height: 'fit-content' }}>
-                    <h4 style={{ marginTop: 0, marginBottom: '1rem' }}>Add New Admin</h4>
-                    <form onSubmit={handleAddAdmin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '500', marginBottom: '0.25rem' }}>Full Name</label>
-                            <input
-                                type="text"
-                                required
-                                value={newAdmin.name}
-                                onChange={e => setNewAdmin({ ...newAdmin, name: e.target.value })}
-                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
-                                placeholder="John Doe"
-                            />
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '500', marginBottom: '0.25rem' }}>Email Address</label>
-                            <input
-                                type="email"
-                                required
-                                value={newAdmin.email}
-                                onChange={e => setNewAdmin({ ...newAdmin, email: e.target.value })}
-                                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
-                                placeholder="john@example.com"
-                            />
-                        </div>
-                        <button type="submit" className="btn btn-primary" style={{ marginTop: '0.5rem' }}>
-                            Add Admin
-                        </button>
-                    </form>
-                </div>
+                                <span className="status-badge status-open" style={{ textTransform: 'capitalize' }}>
+                                    {admin.role_name ? admin.role_name.replace('_', ' ') : 'Admin'}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -791,7 +743,7 @@ function MembersList({ communityId }) {
 
             if (res.ok) {
                 setShowModal(false);
-                setFormData({ full_name: '', email: '', address: '', role_name: 'resident', resident_type: 'owner', owner_type: 'individual' });
+                setFormData({ full_name: '', email: '', address: '', role_name: 'resident', resident_type: 'owner', owner_type: 'individual', phone: '', is_active: true });
                 fetchMembers();
                 setSuccess('Member updated successfully!');
             } else {
@@ -835,7 +787,7 @@ function MembersList({ communityId }) {
                         </button>
                     )}
                     <button onClick={() => {
-                        setFormData({ full_name: '', email: '', address: '', role_name: 'resident', resident_type: 'owner', owner_type: 'individual' });
+                        setFormData({ full_name: '', email: '', address: '', role_name: 'resident', resident_type: 'owner', owner_type: 'individual', phone: '', is_active: true });
                         setShowModal(true);
                     }} className="btn btn-primary">
                         + Add Member

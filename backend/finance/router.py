@@ -538,9 +538,9 @@ async def get_balance_sheet(
          raise HTTPException(status_code=403, detail="Not a member of this community")
          
     # Permission check (Reports usually Board only or transparent?)
-    if not (current_user.role and current_user.role.name in ['board', 'admin']) and current_user.role_id != 3:
-         # Assuming transparency allowed for residents, but if not, restrict here
-         pass 
+    # Permission check (Reports usually Board only or transparent?)
+    if not (current_user.role and current_user.role.name in ['board', 'admin', 'treasurer']) and current_user.role_id != 3:
+         raise HTTPException(status_code=403, detail="Financial reports are restricted to Board and Treasurer.") 
 
     cid = community_id
     assets, total_assets = calculate_balance(db, AccountType.ASSET, cid)

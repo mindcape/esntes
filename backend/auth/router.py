@@ -46,6 +46,26 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         )
     
     # Check Failed Attempts
+    if user.is_locked:
+         logger.warning(f"Login attempt failed for {request.email}: Account locked")
+         raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Account locked. Please contact your administrator.",
+        )
+
+    if user.failed_login_attempts >= 5:
+        # Should be locked but maybe not caught if manually updated DB? 
+        # Enforce lock if not already set
+        if not user.is_locked:
+            user.is_locked = True
+            db.commit()
+            
+        logger.warning(f"Login attempt failed for {request.email}: Account locked (max attempts reached)")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Account locked. Please contact your administrator.",
+        )
+
     if user.failed_login_attempts >= 2:
         if not request.captcha_token:
             logger.info(f"Login attempt for {request.email}: CAPTCHA required (failed attempts: {user.failed_login_attempts})")
@@ -64,6 +84,17 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
     if not user.hashed_password or not verify_password(request.password, user.hashed_password):
         # Increment failed attempts
         user.failed_login_attempts += 1
+        
+        # Lock if threshold reached
+        if user.failed_login_attempts >= 5:
+            user.is_locked = True
+            db.commit()
+            logger.warning(f"Login attempt failed for {request.email}: Account locked (5th fail)")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Account locked. Please contact your administrator.",
+            )
+            
         db.commit()
         
         logger.warning(f"Login attempt failed for {request.email}: Incorrect password (attempt {user.failed_login_attempts})")
@@ -107,6 +138,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         "email": user.email,
         "name": user.full_name,
         "role": user.role.name if user.role else "resident",
+        "permissions": [p.name for p in user.role.permissions] if user.role else [],
         "community_id": user.community_id,
         "is_setup_complete": user.is_setup_complete
     }
@@ -173,17 +205,15 @@ def setup_account(request: SetupAccountRequest, db: Session = Depends(get_db)):
     # 5. Generate Token and Login
     access_token = create_access_token(subject=user.id)
     
+    # Return user info along with token
     user_data = {
         "id": user.id,
         "email": user.email,
         "name": user.full_name,
         "role": user.role.name if user.role else "resident",
+        "permissions": [p.name for p in user.role.permissions] if user.role else [],
         "community_id": user.community_id,
-        "is_setup_complete": user.is_setup_complete,
-         "community": {
-            "name": community.name,
-            "modules_enabled": community.modules_enabled
-        }
+        "is_setup_complete": user.is_setup_complete
     }
 
     return {

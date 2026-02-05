@@ -503,3 +503,48 @@ async def test_auth_advanced(client, db_session):
         assert res.json()["user"]["is_setup_complete"] == True
     
     app.dependency_overrides.clear()
+
+@pytest.mark.asyncio
+async def test_treasurer_access(client, db_session):
+    """Test Treasurer specific workflows (Phase 8)."""
+    # Setup
+    community = Community(name="Treas Comm")
+    db_session.add(community)
+    db_session.commit()
+    
+    # Ensure roles exist
+    if not db_session.query(Role).filter_by(name="treasurer").first():
+        db_session.add(Role(id=5, name="treasurer")) # Assuming ID 5
+    if not db_session.query(Role).filter_by(name="resident").first():
+        db_session.add(Role(name="resident"))
+    db_session.commit()
+    
+    r_treas = db_session.query(Role).filter_by(name="treasurer").first()
+    r_res = db_session.query(Role).filter_by(name="resident").first()
+    
+    treasurer = User(email="treas@test.com", full_name="Treasurer", community_id=community.id, role_id=r_treas.id)
+    resident = User(email="poor_res@test.com", full_name="Res", community_id=community.id, role_id=r_res.id)
+    db_session.add_all([treasurer, resident])
+    db_session.commit()
+    
+    from backend.auth.dependencies import get_current_user
+    
+    # 1. Treasurer Access Financials (Pass)
+    # Assuming endpoint exists and permission check allows treasurer
+    app.dependency_overrides[get_current_user] = lambda: treasurer
+    res = await client.get(f"/api/communities/{community.id}/finance/reports/balance-sheet")
+    # If treasurer logic implemented, should be 200. If we just added role and not permissions, might fail 403.
+    # But user asked for tests. Failing test is fine if logic is missing, but logic should be there per Phase 8 completion.
+    # Asserting 200 or 403 based on current state. Phase 8 completed per task.md means logic exists.
+    # But wait, did we give treasurer permissions? seed_db.py check?
+    # Phase 8 task says: "Secure Finance Endpoints ... for Treasurer".
+    # So it should pass.
+    assert res.status_code == 200
+    
+    # 2. Resident Access Financials (Fail)
+    app.dependency_overrides[get_current_user] = lambda: resident
+    res = await client.get(f"/api/communities/{community.id}/finance/reports/balance-sheet")
+    assert res.status_code in [403, 401]
+    
+    app.dependency_overrides.clear()
+

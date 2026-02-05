@@ -24,7 +24,7 @@ class Settings:
     STRIPE_WEBHOOK_SECRET: str = os.getenv("STRIPE_WEBHOOK_SECRET", "whsec_placeholder")
 
     # Frontend URL for Password Reset Links
-    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
     
     # MFA Settings
     MFA_ISSUER_NAME: str = "ESNTES HOA"
