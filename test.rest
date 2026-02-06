@@ -1,8 +1,0 @@
-POST http://localhost:8000/api/auth/mfa/setup
-Content-Type: application/json
-Authorization: Bearer <token>
-
-{
-    "email": "mlax1980@gmail.com",
-    "password": "admin123"
-}
