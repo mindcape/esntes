@@ -16,7 +16,7 @@ from backend.calendar import router as calendar_router
 from backend.documents import router as documents_router
 from backend.voting import router as voting_router
 
-app = FastAPI(title="ESNTES HOA API", version="0.1.0")
+app = FastAPI(title="Nibrr HOA API", version="0.1.0")
 
 # Setup Logging
 from backend.core.logging import setup_logging
@@ -96,7 +96,7 @@ async def health_check():
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to ESNTES HOA Management API"}
+    return {"message": "Welcome to Nibrr HOA Management API"}
 
 # Startup Events
 from backend.communication.scheduler import init_scheduler

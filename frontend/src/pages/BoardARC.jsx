@@ -23,7 +23,7 @@ export default function BoardARC() {
 
     const fetchRequests = () => {
         if (!user?.community_id) return;
-        const token = localStorage.getItem('esntes_token');
+        const token = localStorage.getItem('nibrr_token');
         fetch(`${API_URL}/api/communities/${user.community_id}/arc`, {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -43,7 +43,7 @@ export default function BoardARC() {
 
     const updateStatus = async (requestId, newStatus) => {
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/communities/${user.community_id}/arc/${requestId}/status?status=${newStatus}`, {
                 method: 'PUT',
                 headers: {
@@ -96,7 +96,7 @@ export default function BoardARC() {
         e.preventDefault();
         setError('');
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/communities/${user.community_id}/arc`, {
                 method: 'POST',
                 headers: {

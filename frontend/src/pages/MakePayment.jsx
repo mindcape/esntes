@@ -32,7 +32,7 @@ const CheckoutForm = ({ amount, description, onSuccess }) => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
                 },
                 body: JSON.stringify({
                     amount_cents: Math.round(amount * 100), // Convert to cents

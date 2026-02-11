@@ -15,7 +15,7 @@ export default function Directory() {
 
     useEffect(() => {
         let isMounted = true;
-        const token = localStorage.getItem('esntes_token');
+        const token = localStorage.getItem('nibrr_token');
         const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
 
         // Auto-dismiss notifications
@@ -49,7 +49,7 @@ export default function Directory() {
         setError(null);
         setSuccess(null);
         const newStatus = !optedIn;
-        const token = localStorage.getItem('esntes_token');
+        const token = localStorage.getItem('nibrr_token');
 
         try {
             const res = await fetch(`${API_URL}/api/community/directory/opt-in?status=${newStatus}`, {

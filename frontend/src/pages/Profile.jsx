@@ -9,7 +9,7 @@ export default function Profile() {
     const [message, setMessage] = useState('');
 
     useEffect(() => {
-        const token = localStorage.getItem('esntes_token');
+        const token = localStorage.getItem('nibrr_token');
         fetch(`${API_URL}/api/user/profile`, {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -87,7 +87,7 @@ export default function Profile() {
         }
 
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/user/profile`, {
                 method: 'PUT',
                 headers: {

@@ -22,7 +22,7 @@ export default function Home() {
     return (
         <div style={{ minHeight: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb', padding: '2rem', textAlign: 'center' }}>
             <h1 style={{ fontSize: '3rem', fontWeight: '800', color: '#111827', marginBottom: '1rem' }}>
-                Welcome to ESNTES
+                Welcome to Nibrr
             </h1>
             <p style={{ fontSize: '1.25rem', color: '#4b5563', maxWidth: '600px', marginBottom: '2rem' }}>
                 The modern platform for Homeowners Associations. efficient management, transparent governance, and seamless communication.

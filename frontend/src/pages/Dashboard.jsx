@@ -28,7 +28,7 @@ const CommunityInfo = () => {
 
         const fetchInfo = async () => {
             try {
-                const token = localStorage.getItem('esntes_token');
+                const token = localStorage.getItem('nibrr_token');
                 const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
                 const res = await fetch(`${API_URL}/api/community-info/info`, { headers });
 
@@ -43,7 +43,7 @@ const CommunityInfo = () => {
 
         const fetchBoard = async () => {
             try {
-                const token = localStorage.getItem('esntes_token');
+                const token = localStorage.getItem('nibrr_token');
                 const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
                 const res = await fetch(`${API_URL}/api/community-info/board`, { headers });
 
@@ -103,7 +103,7 @@ const ResidentDashboard = () => {
 
     React.useEffect(() => {
         let isMounted = true;
-        const token = localStorage.getItem('esntes_token');
+        const token = localStorage.getItem('nibrr_token');
 
         if (token) {
             fetch(`${API_URL}/api/dashboard/resident/stats`, {
@@ -201,7 +201,7 @@ const BoardDashboard = () => {
 
     React.useEffect(() => {
         let isMounted = true;
-        const token = localStorage.getItem('esntes_token');
+        const token = localStorage.getItem('nibrr_token');
 
         if (token) {
             fetch(`${API_URL}/api/dashboard/board/stats`, {
@@ -244,7 +244,7 @@ export default function Dashboard() {
 
     React.useEffect(() => {
         let isMounted = true;
-        const token = localStorage.getItem('esntes_token');
+        const token = localStorage.getItem('nibrr_token');
 
         if (token) {
             fetch(`${API_URL}/api/community-info/info`, {

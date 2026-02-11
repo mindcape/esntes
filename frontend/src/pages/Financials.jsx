@@ -14,7 +14,7 @@ export default function Financials() {
 
     useEffect(() => {
         if (!user?.community_id) return;
-        const token = localStorage.getItem('esntes_token');
+        const token = localStorage.getItem('nibrr_token');
         const headers = { 'Authorization': `Bearer ${token}` };
 
         Promise.all([
@@ -34,7 +34,7 @@ export default function Financials() {
 
     const fetchDelinquencies = () => {
         if (!user?.community_id) return;
-        const token = localStorage.getItem('esntes_token');
+        const token = localStorage.getItem('nibrr_token');
         fetch(`${API_URL}/api/communities/${user.community_id}/finance/delinquencies`, {
             headers: { 'Authorization': `Bearer ${token}` }
         })
@@ -47,7 +47,7 @@ export default function Financials() {
         setMessage('');
         if (!user?.community_id) return;
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/communities/${user.community_id}/finance/assessments/generate`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -68,7 +68,7 @@ export default function Financials() {
         setMessage('');
         if (!user?.community_id) return;
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/communities/${user.community_id}/finance/assessments/late-fees`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }

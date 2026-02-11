@@ -43,7 +43,7 @@ export default function Documents() {
     const fetchDocuments = () => {
         if (!user?.community_id) return;
         const role = user?.role?.name || user?.role || 'resident'; // Handle object or string role
-        const token = localStorage.getItem('esntes_token');
+        const token = localStorage.getItem('nibrr_token');
         fetch(`${API_URL}/api/communities/${user.community_id}/documents?user_role=${role}`, {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -80,7 +80,7 @@ export default function Documents() {
         }
 
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/communities/${user.community_id}/documents`, {
                 method: 'POST',
                 headers: {
@@ -115,7 +115,7 @@ export default function Documents() {
         if (!confirm('Are you sure you want to delete this document?')) return;
 
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/communities/${user.community_id}/documents/${docId}`, {
                 method: 'DELETE',
                 headers: {

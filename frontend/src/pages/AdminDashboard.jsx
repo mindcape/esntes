@@ -25,6 +25,11 @@ export default function AdminDashboard() {
         }
     }, [user]);
 
+    const formatRoleTitle = (role) => {
+        if (!role) return 'Admin Dashboard';
+        return role.replace(/_/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') + ' Dashboard';
+    }
+
     // Handle Unauthenticated State
     if (!canManageCommunities) {
         return (
@@ -32,13 +37,13 @@ export default function AdminDashboard() {
                 <div className="card" style={{ width: '350px', padding: '2rem', textAlign: 'center' }}>
                     <h1 style={{ marginBottom: '1.5rem', fontSize: '1.5rem' }}>Admin Portal</h1>
                     {user && <div style={{ color: 'red', marginBottom: '1rem' }}>Access Denied: You do not have permission to manage communities.</div>}
-                    <p style={{ color: '#666', marginBottom: '2rem' }}>Please log in with administrative credentials.</p>
+                    <p style={{ color: '#666', marginBottom: '2rem' }}>Please sign in with administrative credentials to continue.</p>
                     <button
-                        onClick={() => login('super_admin')}
+                        onClick={() => navigate('/login')}
                         className="btn btn-primary"
-                        style={{ width: '100%', padding: '0.75rem', backgroundColor: '#333', borderColor: '#333' }}
+                        style={{ width: '100%', padding: '0.75rem' }}
                     >
-                        Login as Super Admin
+                        Go to Login
                     </button>
                 </div>
             </div>
@@ -63,7 +68,7 @@ export default function AdminDashboard() {
 
     const fetchCommunities = () => {
         setLoading(true);
-        const token = localStorage.getItem('esntes_token');
+        const token = localStorage.getItem('nibrr_token');
         fetch(`${API_URL}/api/admin/communities`, {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -120,7 +125,7 @@ export default function AdminDashboard() {
         if (!validateForm()) return;
 
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/admin/communities`, {
                 method: 'POST',
                 headers: {
@@ -150,7 +155,7 @@ export default function AdminDashboard() {
         <div className="container">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <div>
-                    <h1 style={{ margin: 0 }}>Super Admin Dashboard</h1>
+                    <h1 style={{ margin: 0 }}>{formatRoleTitle(user?.role)}</h1>
                     <p style={{ color: '#666', marginTop: '0.5rem' }}>Overview of all Communities (HOAs)</p>
                 </div>
                 <button onClick={() => { setModalError(null); setShowModal(true); }} className="btn btn-primary">

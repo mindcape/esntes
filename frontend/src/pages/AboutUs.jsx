@@ -6,7 +6,7 @@ export default function AboutUs() {
         <div style={{ fontFamily: '"Inter", sans-serif', color: '#1e293b' }}>
             {/* Hero */}
             <section style={{ backgroundColor: 'white', padding: '5rem 2rem', textAlign: 'center' }}>
-                <h1 style={{ fontSize: '3rem', fontWeight: '800', marginBottom: '1.5rem', color: '#0f172a' }}>About ESNTES</h1>
+                <h1 style={{ fontSize: '3rem', fontWeight: '800', marginBottom: '1.5rem', color: '#0f172a' }}>About Nibrr</h1>
                 <p style={{ fontSize: '1.25rem', color: '#64748b', maxWidth: '700px', margin: '0 auto', lineHeight: '1.6' }}>
                     We are dedicated to modernizing home owners associations with transparent, easy-to-use technology that brings neighbors together.
                 </p>

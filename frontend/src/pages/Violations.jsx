@@ -29,7 +29,7 @@ export default function Violations() {
         // Ensure user is loaded
         if (!user?.community_id) return;
 
-        const token = localStorage.getItem('esntes_token');
+        const token = localStorage.getItem('nibrr_token');
 
         fetch(`${API_URL}/api/communities/${user.community_id}/violations/my`, {
             headers: {
@@ -59,7 +59,7 @@ export default function Violations() {
         setSuccess(null);
 
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/communities/${user.community_id}/violations/${violationId}/pay`, {
                 method: 'POST',
                 headers: {

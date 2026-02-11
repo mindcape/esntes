@@ -6,13 +6,13 @@ export const TechSupport = () => (
         <h2 style={{ marginBottom: '2rem' }}>Technical Support</h2>
         <div className="card">
             <p style={{ marginBottom: '1.5rem', fontSize: '1.1rem' }}>
-                Having trouble with the ESNTES Portal? Our support team is here to help.
+                Having trouble with the Nibrr Portal? Our support team is here to help.
             </p>
 
             <div style={{ display: 'grid', gap: '1.5rem' }}>
                 <div>
                     <strong>Email Support</strong><br />
-                    <a href="mailto:support@esntes.com" style={{ color: 'hsl(215 25% 27%)', textDecoration: 'underline' }}>support@esntes.com</a>
+                    <a href="mailto:support@nibrr.com" style={{ color: 'hsl(215 25% 27%)', textDecoration: 'underline' }}>support@nibrr.com</a>
                     <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '0.25rem' }}>Response time: Within 24 hours</p>
                 </div>
 

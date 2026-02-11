@@ -15,7 +15,7 @@ export default function LandingPage() {
             {/* Hero Section */}
             <section style={{ backgroundColor: 'white', padding: '6rem 2rem', textAlign: 'center' }}>
                 <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                    <h1 style={{ fontSize: '3.5rem', fontWeight: '800', marginBottom: '1.5rem', lineHeight: '1.1', background: 'linear-gradient(to right, #0066cc, #2563eb)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                    <h1 style={{ fontSize: '3.5rem', fontWeight: '800', marginBottom: '1.5rem', lineHeight: '1.1', background: 'linear-gradient(to right, #2563eb, #84cc16)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                         Community Management,<br />Simplified.
                     </h1>
                     <p style={{ fontSize: '1.25rem', color: '#64748b', marginBottom: '2.5rem', lineHeight: '1.6' }}>
@@ -79,7 +79,7 @@ export default function LandingPage() {
             <section style={{ padding: '6rem 2rem', backgroundColor: '#1e293b', color: 'white', textAlign: 'center' }}>
                 <h2 style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Ready to transform your community?</h2>
                 <p style={{ fontSize: '1.25rem', color: '#94a3b8', marginBottom: '2.5rem', maxWidth: '600px', margin: '0 auto 2.5rem' }}>
-                    Join thousands of thriving communities using ESNTES to build better neighborhoods.
+                    Join thousands of thriving communities using Nibrr to build better neighborhoods.
                 </p>
                 <Link to="/setup" style={{ backgroundColor: 'white', color: '#1e293b', padding: '1rem 3rem', borderRadius: '0.5rem', fontSize: '1.1rem', fontWeight: 'bold', textDecoration: 'none' }}>
                     Get Started Now

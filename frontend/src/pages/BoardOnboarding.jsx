@@ -12,7 +12,7 @@ export default function BoardOnboarding() {
     const checkStatus = async () => {
         try {
             const res = await fetch(`${API_URL}/api/payments/status`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('esntes_token')}` }
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` }
             });
             if (res.ok) {
                 const data = await res.json();
@@ -29,7 +29,7 @@ export default function BoardOnboarding() {
         try {
             const res = await fetch(`${API_URL}/api/payments/onboard`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('esntes_token')}` }
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` }
             });
             if (res.ok) {
                 const data = await res.json();

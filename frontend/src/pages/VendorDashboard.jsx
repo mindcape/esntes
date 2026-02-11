@@ -17,7 +17,7 @@ export default function VendorDashboard() {
     });
 
     useEffect(() => {
-        const storedUser = JSON.parse(localStorage.getItem('esntes_user') || '{}');
+        const storedUser = JSON.parse(localStorage.getItem('nibrr_user') || '{}');
         setUser(storedUser);
         if (storedUser.role === 'vendor' && storedUser.vendor_id) {
             fetchData(storedUser.vendor_id);
@@ -27,7 +27,7 @@ export default function VendorDashboard() {
     const fetchData = async (vendorId) => {
         setLoading(true);
         try {
-            const headers = { 'Authorization': `Bearer ${localStorage.getItem('esntes_token')}` };
+            const headers = { 'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` };
 
             // Fetch All Work Orders (filter client side or backend? Backend is cleaner but let's see)
             // Ideally we need endpoint to get "My Work Orders" or filter by assigned_vendor_id
@@ -74,7 +74,7 @@ export default function VendorDashboard() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
                 },
                 body: JSON.stringify(payload)
             });

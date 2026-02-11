@@ -1,6 +1,6 @@
 # AWS Deployment Guide (Option 2)
 
-This guide walks you through deploying the **ESNTES HOA Portal** using **AWS Amplify** (Frontend) and **AWS App Runner** (Backend). This "Serverless-like" approach handles scaling automatically.
+This guide walks you through deploying the **Nibrr HOA Portal** using **AWS Amplify** (Frontend) and **AWS App Runner** (Backend). This "Serverless-like" approach handles scaling automatically.
 
 ## Prerequisites
 1.  **AWS Account**: You need an active AWS account.

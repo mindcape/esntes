@@ -7,10 +7,7 @@ import {
     Layout,
     Send,
     ArrowLeft,
-    Plus,
-    X,
     Check,
-    AlignLeft,
     Clock,
     FileText
 } from 'lucide-react';
@@ -24,17 +21,13 @@ const CampaignWizard = () => {
     const [campaignTitle, setCampaignTitle] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // Template Creation Modal State
-    const [showTemplateModal, setShowTemplateModal] = useState(false);
-    const [newTemplate, setNewTemplate] = useState({ name: '', subject: '', body: '' });
-
     // Fetch Templates on mount
     useEffect(() => {
         fetchTemplates();
     }, []);
 
     const fetchTemplates = async () => {
-        const token = localStorage.getItem('esntes_token');
+        const token = localStorage.getItem('nibrr_token');
         try {
             const res = await fetch(`${API_URL}/api/communication/templates`, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -48,36 +41,6 @@ const CampaignWizard = () => {
         }
     };
 
-    const handleCreateTemplate = async (e) => {
-        e.preventDefault();
-        if (!newTemplate.name || !newTemplate.subject || !newTemplate.body) return;
-
-        try {
-            const token = localStorage.getItem('esntes_token');
-            const res = await fetch(`${API_URL}/api/communication/templates`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    name: newTemplate.name,
-                    subject_template: newTemplate.subject,
-                    content_html: newTemplate.body
-                })
-            });
-            if (res.ok) {
-                const newTmpl = await res.json();
-                setTemplates([...templates, newTmpl]);
-                setSelectedTemplate(newTmpl);
-                setShowTemplateModal(false);
-                setNewTemplate({ name: '', subject: '', body: '' }); // Reset
-            }
-        } catch (e) {
-            alert("Failed to create template");
-        }
-    };
-
     const handleSubmit = async () => {
         if (!campaignTitle || !selectedTemplate) {
             alert("Please fill in all required fields (Title and Template).");
@@ -86,7 +49,7 @@ const CampaignWizard = () => {
 
         setLoading(true);
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const payload = {
                 title: campaignTitle,
                 template_id: selectedTemplate.id,
@@ -247,41 +210,36 @@ const CampaignWizard = () => {
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                                 <Layout size={20} className="text-blue-600" />
-                                Email Content
+                                Select Template
                             </h3>
-                            <button
-                                onClick={() => setShowTemplateModal(true)}
-                                className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
-                            >
-                                <Plus size={16} />
-                                Create New Template
-                            </button>
+                            <Link to="/communications" className="text-blue-600 text-sm font-medium hover:underline">
+                                Manage Templates
+                            </Link>
                         </div>
 
                         {templates.length === 0 ? (
                             <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-lg p-12 text-center">
                                 <FileText className="text-gray-300 mb-4" size={48} />
                                 <h4 className="text-lg font-medium text-gray-900">No templates found</h4>
-                                <p className="text-gray-500 mb-6">Create a template to start designing your email.</p>
-                                <button
-                                    onClick={() => setShowTemplateModal(true)}
+                                <p className="text-gray-500 mb-6">Create a template in the dashboard to start.</p>
+                                <Link
+                                    to="/communications"
                                     className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
                                 >
-                                    Create Template
-                                </button>
+                                    Go to Dashboard
+                                </Link>
                             </div>
                         ) : (
                             <div className="space-y-6 flex-1">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Template</label>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[240px] overflow-y-auto p-1">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[300px] overflow-y-auto p-1">
                                         {templates.map(t => (
                                             <div
                                                 key={t.id}
                                                 onClick={() => setSelectedTemplate(t)}
                                                 className={`p-4 border rounded-lg cursor-pointer transition-all relative ${selectedTemplate?.id === t.id
-                                                        ? 'border-blue-600 ring-2 ring-blue-50 bg-blue-50/20'
-                                                        : 'border-gray-200 hover:border-blue-300 hover:shadow-sm'
+                                                    ? 'border-blue-600 ring-2 ring-blue-50 bg-blue-50/20'
+                                                    : 'border-gray-200 hover:border-blue-300 hover:shadow-sm'
                                                     }`}
                                             >
                                                 {selectedTemplate?.id === t.id && (
@@ -299,7 +257,7 @@ const CampaignWizard = () => {
                                 {selectedTemplate && (
                                     <div className="border-t pt-6 mt-2 flex-1 flex flex-col">
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Preview</label>
-                                        <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 flex-1">
+                                        <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 flex-1 overflow-auto max-h-[400px]">
                                             <div className="bg-white shadow-sm rounded border border-gray-100 max-w-2xl mx-auto overflow-hidden">
                                                 <div className="bg-gray-50 border-b px-4 py-3 text-sm text-gray-600 flex gap-2">
                                                     <span className="font-semibold text-gray-700">Subject:</span>
@@ -316,76 +274,6 @@ const CampaignWizard = () => {
                     </div>
                 </div>
             </div>
-
-            {/* Template Creation Modal */}
-            {showTemplateModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl relative animate-in fade-in zoom-in duration-200">
-                        <button
-                            onClick={() => setShowTemplateModal(false)}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-                        >
-                            <X size={24} />
-                        </button>
-
-                        <div className="p-6 border-b border-gray-100">
-                            <h2 className="text-xl font-bold text-gray-900">Create New Email Template</h2>
-                        </div>
-
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">Template Name</label>
-                                <input
-                                    type="text"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                    placeholder="e.g. Monthly Newsletter Layout"
-                                    value={newTemplate.name}
-                                    onChange={e => setNewTemplate({ ...newTemplate, name: e.target.value })}
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">Email Subject</label>
-                                <input
-                                    type="text"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                    placeholder="Enter subject line (supports {{first_name}})"
-                                    value={newTemplate.subject}
-                                    onChange={e => setNewTemplate({ ...newTemplate, subject: e.target.value })}
-                                />
-                                <p className="text-xs text-gray-500 mt-1">Tip: Use <code>{"{{first_name}}"}</code> to insert the recipient's name.</p>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">HTML Content</label>
-                                <textarea
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm"
-                                    rows={8}
-                                    placeholder="<div>Hello {{first_name}},</div><br><p>Write your content here...</p>"
-                                    value={newTemplate.body}
-                                    onChange={e => setNewTemplate({ ...newTemplate, body: e.target.value })}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-xl flex justify-end gap-3">
-                            <button
-                                onClick={() => setShowTemplateModal(false)}
-                                className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg font-medium transition"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleCreateTemplate}
-                                disabled={!newTemplate.name || !newTemplate.subject || !newTemplate.body}
-                                className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Save Template
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

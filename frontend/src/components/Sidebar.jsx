@@ -108,8 +108,8 @@ export default function Sidebar() {
             {/* Header */}
             <div style={{ padding: '1.5rem', display: 'flex', justifyContent: isCollapsed ? 'center' : 'space-between', alignItems: 'center' }}>
                 {!isCollapsed && (
-                    <Link to="/" style={{ fontWeight: 'bold', fontSize: '1.5rem', color: 'hsl(215 25% 27%)', textDecoration: 'none' }}>
-                        ESNTES
+                    <Link to="/" style={{ fontWeight: 'bold', fontSize: '1.5rem', color: 'hsl(215 25% 27%)', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
+                        <img src="/logo.svg" alt="Nibrr" style={{ height: '40px' }} />
                     </Link>
                 )}
                 <button

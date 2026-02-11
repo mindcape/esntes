@@ -6,7 +6,9 @@ export default function PublicNavbar() {
         <nav style={{ backgroundColor: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', padding: '1rem 2rem', position: 'sticky', top: 0, zIndex: 1000 }}>
             <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ fontWeight: 'bold', fontSize: '1.5rem', color: '#0066cc', letterSpacing: '-0.5px' }}>
-                    <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>ESNTES HOA</Link>
+                    <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center' }}>
+                        <img src="/logo.svg" alt="Nibrr" style={{ height: '45px' }} />
+                    </Link>
                 </div>
 
                 <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>

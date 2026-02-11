@@ -12,7 +12,7 @@ export default function PublicLayout() {
             <footer style={{ backgroundColor: '#1e293b', color: '#94a3b8', padding: '3rem 2rem' }}>
                 <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '4rem' }}>
                     <div>
-                        <div style={{ color: 'white', fontWeight: 'bold', fontSize: '1.25rem', marginBottom: '1rem' }}>ESNTES HOA</div>
+                        <div style={{ color: 'white', fontWeight: 'bold', fontSize: '1.25rem', marginBottom: '1rem' }}>Nibrr HOA</div>
                         <p style={{ maxWidth: '300px', lineHeight: '1.6' }}>
                             Modernizing community management with transparency, efficiency, and ease of use.
                         </p>
@@ -44,7 +44,7 @@ export default function PublicLayout() {
                     </div>
                 </div>
                 <div style={{ maxWidth: '1200px', margin: '3rem auto 0', paddingTop: '2rem', borderTop: '1px solid #334155', textAlign: 'center', fontSize: '0.9rem' }}>
-                    © 2026 ESNTES. All rights reserved.
+                    © 2026 Nibrr. All rights reserved.
                 </div>
             </footer>
         </div>

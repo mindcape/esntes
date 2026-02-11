@@ -48,3 +48,10 @@ backend/esntes.db
 site/
 logs/
 google-cloud-sdk/
+.history
+.pytest_cache
+venv/
+.coverage
+.coveragerc
+
+/.coverage

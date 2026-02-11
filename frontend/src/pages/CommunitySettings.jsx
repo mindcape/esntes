@@ -31,9 +31,15 @@ export default function CommunitySettings() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('general');
 
+    // Finance-related state
+    const [totalDelinquency, setTotalDelinquency] = useState(0.0);
+    const [delinquents, setDelinquents] = useState([]);
+    const [operatingBalance, setOperatingBalance] = useState(null);
+    const [pendingApprovals, setPendingApprovals] = useState(0);
+
     const fetchCommunity = () => {
         setLoading(true);
-        const token = localStorage.getItem('esntes_token');
+        const token = localStorage.getItem('nibrr_token');
         fetch(`${API_URL}/api/admin/communities/${id}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         })
@@ -51,6 +57,78 @@ export default function CommunitySettings() {
                 setLoading(false);
             });
     };
+
+    // Finance overview: delinquencies, operating account balance, pending approvals
+    const fetchFinanceOverview = async (communityId) => {
+        try {
+            const token = localStorage.getItem('nibrr_token');
+
+            // 1) Delinquencies
+            const dRes = await fetch(`${API_URL}/api/communities/${communityId}/finance/delinquencies`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (dRes.ok) {
+                const dData = await dRes.json();
+                setDelinquents(Array.isArray(dData) ? dData : []);
+                const total = (Array.isArray(dData) ? dData : []).reduce((acc, cur) => acc + (cur.balance || 0), 0);
+                setTotalDelinquency(total);
+            } else {
+                setDelinquents([]);
+                setTotalDelinquency(0);
+            }
+
+            // 2) Operating account: find account code 1010 then compute balance via ledger
+            const aRes = await fetch(`${API_URL}/api/communities/${communityId}/finance/accounts`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            let opBalance = null;
+            if (aRes.ok) {
+                const accounts = await aRes.json();
+                const op = (accounts || []).find(ac => ac.code === '1010' || (ac.name && ac.name.toLowerCase().includes('operat')));
+                if (op) {
+                    // fetch ledger and sum entries for this account
+                    const lRes = await fetch(`${API_URL}/api/communities/${communityId}/finance/ledger?limit=500`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (lRes.ok) {
+                        const txs = await lRes.json();
+                        let bal = 0;
+                        (txs || []).forEach(tx => {
+                            if (tx.entries && Array.isArray(tx.entries)) {
+                                tx.entries.forEach(e => {
+                                    if (e.account_id === op.id) {
+                                        bal += (e.debit || 0) - (e.credit || 0);
+                                    }
+                                });
+                            }
+                        });
+                        opBalance = bal;
+                    }
+                }
+            }
+            setOperatingBalance(opBalance);
+
+            // 3) Pending approvals (ARC)
+            const arcRes = await fetch(`${API_URL}/api/communities/${communityId}/arc`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (arcRes.ok) {
+                const arcData = await arcRes.json();
+                const pending = (arcData || []).filter(r => r.status === 'PENDING' || r.status === 0).length;
+                setPendingApprovals(pending);
+            } else {
+                setPendingApprovals(0);
+            }
+        } catch (err) {
+            console.error('Finance fetch error', err);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'finance' && community) {
+            fetchFinanceOverview(community.id);
+        }
+    }, [activeTab, community]);
     // ... inside CommunitySettings component ...
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
@@ -103,7 +181,7 @@ export default function CommunitySettings() {
         if (!validateForm()) return;
 
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/admin/communities/${community.id}`, {
                 method: 'PUT',
                 headers: {
@@ -308,13 +386,54 @@ export default function CommunitySettings() {
                     )}
 
                     {activeTab === 'finance' && (
-                        <div style={{ maxWidth: '600px', textAlign: 'center', padding: '3rem' }}>
-                            <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🏦</div>
-                            <h2 style={{ margin: '0 0 1rem 0' }}>Financial Setup</h2>
-                            <p style={{ color: '#666', marginBottom: '2rem' }}>Link the community's bank account or payment processor (Stripe) to enable rent collection and fee payments.</p>
-                            <button className="btn" style={{ backgroundColor: '#635bff', color: 'white', border: 'none', padding: '1rem 2rem', fontSize: '1.1rem', borderRadius: '4px' }} disabled title="Coming Soon">
-                                Connect with Stripe (Coming Soon)
-                            </button>
+                        <div style={{ maxWidth: '900px' }}>
+                            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                                <div className="card" style={{ padding: '1rem', flex: 1 }}>
+                                    <div style={{ fontSize: '0.9rem', color: '#666' }}>Total Delinquency</div>
+                                    <div style={{ fontSize: '1.6rem', fontWeight: '700', marginTop: '0.5rem' }}>${totalDelinquency.toFixed(2)}</div>
+                                    <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>{delinquents.length} delinquent resident(s)</div>
+                                </div>
+                                <div className="card" style={{ padding: '1rem', flex: 1 }}>
+                                    <div style={{ fontSize: '0.9rem', color: '#666' }}>Operating Account</div>
+                                    <div style={{ fontSize: '1.6rem', fontWeight: '700', marginTop: '0.5rem' }}>{operatingBalance === null ? '—' : `$${operatingBalance.toFixed(2)}`}</div>
+                                    <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>Account code: 1010 (if configured)</div>
+                                </div>
+                                <div className="card" style={{ padding: '1rem', flex: 1 }}>
+                                    <div style={{ fontSize: '0.9rem', color: '#666' }}>Pending Approval Requests</div>
+                                    <div style={{ fontSize: '1.6rem', fontWeight: '700', marginTop: '0.5rem' }}>{pendingApprovals}</div>
+                                    <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>ARC & maintenance approvals</div>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="card" style={{ padding: '1rem' }}>
+                                    <h4 style={{ marginTop: 0 }}>Delinquent Residents</h4>
+                                    {delinquents.length === 0 ? (
+                                        <div style={{ color: '#666' }}>No delinquencies found.</div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            {delinquents.map(d => (
+                                                <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <div>
+                                                        <div style={{ fontWeight: '600' }}>{d.name}</div>
+                                                        <div style={{ fontSize: '0.9rem', color: '#666' }}>{d.address}</div>
+                                                    </div>
+                                                    <div style={{ textAlign: 'right' }}>
+                                                        <div style={{ fontWeight: '700' }}>${d.balance.toFixed(2)}</div>
+                                                        <div style={{ fontSize: '0.8rem', color: '#666' }}>{d.days_overdue} days</div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="card" style={{ padding: '1rem' }}>
+                                    <h4 style={{ marginTop: 0 }}>Recent Financial Activity</h4>
+                                    <p style={{ color: '#666' }}>Link the community's bank account or payment processor (Stripe) to enable richer reporting.</p>
+                                    <button className="btn" style={{ backgroundColor: '#635bff', color: 'white', border: 'none', padding: '0.6rem 1rem', fontSize: '0.95rem', borderRadius: '4px' }} disabled title="Coming Soon">Connect with Stripe (Coming Soon)</button>
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -350,7 +469,7 @@ function ImportResidents({ communityId }) {
         formData.append('file', fileInput.files[0]);
 
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/import`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` },
@@ -404,7 +523,7 @@ function TeamSettings({ communityId }) {
 
     const fetchAdmins = () => {
         setLoading(true);
-        const token = localStorage.getItem('esntes_token');
+        const token = localStorage.getItem('nibrr_token');
         fetch(`${API_URL}/api/admin/communities/${communityId}/admins`, {
             headers: { 'Authorization': `Bearer ${token}` }
         })
@@ -513,7 +632,7 @@ function MembersList({ communityId }) {
 
     const fetchMembers = () => {
         setLoading(true);
-        const token = localStorage.getItem('esntes_token');
+        const token = localStorage.getItem('nibrr_token');
 
         // Fetch Members
         const p1 = fetch(`${API_URL}/api/admin/communities/${communityId}/members`, {
@@ -562,7 +681,7 @@ function MembersList({ communityId }) {
         if (!window.confirm(`Are you sure you want to deactivate ${selectedUsers.size} users?`)) return;
 
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/members/bulk-delete`, {
                 method: 'POST',
                 headers: {
@@ -588,7 +707,7 @@ function MembersList({ communityId }) {
         if (!window.confirm("Are you sure you want to deactivate this user?")) return;
         // Re-use bulk delete endpoint for single user for simplicity
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/members/bulk-delete`, {
                 method: 'POST',
                 headers: {
@@ -612,7 +731,7 @@ function MembersList({ communityId }) {
 
     const handleApprove = async (memberId) => {
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/members/${memberId}`, {
                 method: 'PUT',
                 headers: {
@@ -643,7 +762,7 @@ function MembersList({ communityId }) {
         setError(null);
         setSuccess(null);
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/members`, {
                 method: 'POST',
                 headers: {
@@ -688,7 +807,7 @@ function MembersList({ communityId }) {
         if (!passwordResetUser) return;
 
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/admin/users/${passwordResetUser.id}/reset-password`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -728,7 +847,7 @@ function MembersList({ communityId }) {
     const handleUpdate = async (e) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/members/${formData.id}`, {
                 method: 'PUT',
                 headers: {

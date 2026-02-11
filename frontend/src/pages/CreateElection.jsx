@@ -76,7 +76,7 @@ export default function CreateElection() {
                 candidates: validCandidates,
             };
 
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/voting/`, {
                 method: 'POST',
                 headers: {

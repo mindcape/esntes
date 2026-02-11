@@ -11,7 +11,7 @@ export default function Maintenance() {
     useEffect(() => {
         if (!user?.community_id) return;
 
-        const token = localStorage.getItem('esntes_token') || localStorage.getItem('token');
+        const token = localStorage.getItem('nibrr_token') || localStorage.getItem('token');
         fetch(`${API_URL}/api/communities/${user.community_id}/maintenance`, {
             headers: {
                 'Accept': 'application/json',
@@ -29,7 +29,7 @@ export default function Maintenance() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('esntes_token') || localStorage.getItem('token');
+            const token = localStorage.getItem('nibrr_token') || localStorage.getItem('token');
             const response = await fetch(`${API_URL}/api/communities/${user.community_id}/maintenance`, {
                 method: 'POST',
                 headers: {

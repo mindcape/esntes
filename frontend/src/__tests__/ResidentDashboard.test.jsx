@@ -38,7 +38,7 @@ const mockCommunityInfo = {
 describe('Resident Dashboard Component', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        localStorage.setItem('esntes_token', 'mock-token');
+        localStorage.setItem('nibrr_token', 'mock-token');
         useAuth.mockReturnValue({ user: mockResident });
 
         // Mock fetch routing

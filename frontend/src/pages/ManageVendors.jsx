@@ -27,7 +27,7 @@ export default function ManageVendors() {
     const fetchVendors = () => {
         setLoading(true);
         fetch(`${API_URL}/api/vendors`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('esntes_token')}` }
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` }
         })
             .then(res => res.json())
             .then(data => {
@@ -54,7 +54,7 @@ export default function ManageVendors() {
                 method: method,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
                 },
                 body: JSON.stringify(formData)
             });
@@ -97,7 +97,7 @@ export default function ManageVendors() {
         try {
             const res = await fetch(`${API_URL}/api/vendors/${id}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('esntes_token')}` }
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` }
             });
             if (res.ok) fetchVendors();
             else setError("Failed to delete");

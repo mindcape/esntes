@@ -32,7 +32,7 @@ const BoardOnboardingWizard = () => {
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const token = localStorage.getItem('esntes_token');
+                const token = localStorage.getItem('nibrr_token');
                 const res = await fetch(`${API_URL}/api/community/settings`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
@@ -51,7 +51,7 @@ const BoardOnboardingWizard = () => {
     const handleSaveSettings = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/community/settings`, {
                 method: 'PATCH',
                 headers: {
@@ -79,7 +79,7 @@ const BoardOnboardingWizard = () => {
         if (emails.length === 0) return;
 
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             await fetch(`${API_URL}/api/community/invite-board`, {
                 method: 'POST',
                 headers: {
@@ -119,7 +119,7 @@ const BoardOnboardingWizard = () => {
                     {/* Step 1: Welcome */}
                     {step === 1 && (
                         <div className="text-center">
-                            <h2 className="text-2xl font-bold mb-4">Welcome to ESNTES!</h2>
+                            <h2 className="text-2xl font-bold mb-4">Welcome to Nibrr!</h2>
                             <p className="text-gray-600 mb-6">
                                 We're excited to help you manage <strong>{user?.community?.name || 'your community'}</strong>.
                                 Let's get your portal set up in just a few minutes.

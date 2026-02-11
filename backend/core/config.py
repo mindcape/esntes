@@ -2,7 +2,7 @@
 import os
 
 class Settings:
-    PROJECT_NAME: str = "ESNTES HOA Manager"
+    PROJECT_NAME: str = "Nibrr HOA Manager"
     SECRET_KEY: str = os.getenv("SECRET_KEY", "super-secret-key-please-change-in-production")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 1 week
@@ -10,7 +10,7 @@ class Settings:
     # Email Settings
     MAIL_USERNAME: str = os.getenv("MAIL_USERNAME")
     MAIL_PASSWORD: str = os.getenv("MAIL_PASSWORD")
-    MAIL_FROM: str = os.getenv("MAIL_FROM", "noreply@esntes.com")
+    MAIL_FROM: str = os.getenv("MAIL_FROM", "noreply@nibrr.com")
     MAIL_PORT: int = int(os.getenv("MAIL_PORT", 587))
     MAIL_SERVER: str = os.getenv("MAIL_SERVER", "smtp.gmail.com")
     MAIL_STARTTLS: bool = os.getenv("MAIL_STARTTLS", "True") == "True"
@@ -27,10 +27,10 @@ class Settings:
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
     
     # MFA Settings
-    MFA_ISSUER_NAME: str = "ESNTES HOA"
+    MFA_ISSUER_NAME: str = "Nibrr HOA"
 
     # S3 Storage
-    S3_BUCKET_NAME: str = os.getenv("S3_BUCKET_NAME", "esntes-local")
+    S3_BUCKET_NAME: str = os.getenv("S3_BUCKET_NAME", "nibrr-local")
     AWS_ACCESS_KEY_ID: str = os.getenv("AWS_ACCESS_KEY_ID", "minioadmin")
     AWS_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
     AWS_REGION: str = os.getenv("AWS_REGION", "us-east-1")

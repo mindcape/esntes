@@ -30,7 +30,7 @@ export default function Calendar() {
         // NEW NESTED ENDPOINT
         fetch(`${API_URL}/api/communities/${user.community_id}/events`, {
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
+                'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
             }
         })
             .then(res => res.json())
@@ -97,7 +97,7 @@ export default function Calendar() {
                 method: selectedEvent ? 'PUT' : 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('esntes_token')}` // Auth for admin check
+                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` // Auth for admin check
                 },
                 body: JSON.stringify({
                     ...payload,
@@ -155,7 +155,7 @@ export default function Calendar() {
             // NEW NESTED ENDPOINT
             const res = await fetch(`${API_URL}/api/communities/${user.community_id}/events/${eventId}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('esntes_token')}` }
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` }
             });
 
             if (res.ok) {

@@ -10,7 +10,7 @@ export default function Visitors() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const response = await fetch(`${API_URL}/api/visitors/`, {
                 method: 'POST',
                 headers: {

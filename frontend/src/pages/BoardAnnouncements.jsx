@@ -21,7 +21,7 @@ export default function BoardAnnouncements() {
         setLoading(true);
         try {
             const res = await fetch(`${API_URL}/api/communication`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('esntes_token')}` }
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` }
             });
             if (res.ok) {
                 const data = await res.json();
@@ -43,7 +43,7 @@ export default function BoardAnnouncements() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
                 },
                 body: JSON.stringify(formData)
             });

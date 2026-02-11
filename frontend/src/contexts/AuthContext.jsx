@@ -13,8 +13,8 @@ export const AuthProvider = ({ children }) => {
     // Initial check
     useEffect(() => {
         const checkAuth = async () => {
-            const storedToken = localStorage.getItem('esntes_token');
-            const storedUser = localStorage.getItem('esntes_user');
+            const storedToken = localStorage.getItem('nibrr_token');
+            const storedUser = localStorage.getItem('nibrr_user');
 
             if (storedToken && storedUser) {
                 setUser(JSON.parse(storedUser));
@@ -63,8 +63,8 @@ export const AuthProvider = ({ children }) => {
             }
 
             setUser(data.user);
-            localStorage.setItem('esntes_token', data.access_token);
-            localStorage.setItem('esntes_user', JSON.stringify(data.user));
+            localStorage.setItem('nibrr_token', data.access_token);
+            localStorage.setItem('nibrr_user', JSON.stringify(data.user));
             return data.user;
         } catch (err) {
             setError(err.message);
@@ -90,8 +90,8 @@ export const AuthProvider = ({ children }) => {
 
             const data = await res.json();
             setUser(data.user);
-            localStorage.setItem('esntes_token', data.access_token);
-            localStorage.setItem('esntes_user', JSON.stringify(data.user));
+            localStorage.setItem('nibrr_token', data.access_token);
+            localStorage.setItem('nibrr_user', JSON.stringify(data.user));
             return data.user;
         } catch (err) {
             setError(err.message);
@@ -118,8 +118,8 @@ export const AuthProvider = ({ children }) => {
 
             const data = await response.json();
             setUser(data.user);
-            localStorage.setItem('esntes_token', data.access_token);
-            localStorage.setItem('esntes_user', JSON.stringify(data.user));
+            localStorage.setItem('nibrr_token', data.access_token);
+            localStorage.setItem('nibrr_user', JSON.stringify(data.user));
             return true;
         } catch (err) {
             setError(err.message);
@@ -131,8 +131,8 @@ export const AuthProvider = ({ children }) => {
 
     const logout = () => {
         setUser(null);
-        localStorage.removeItem('esntes_user');
-        localStorage.removeItem('esntes_token');
+        localStorage.removeItem('nibrr_user');
+        localStorage.removeItem('nibrr_token');
     };
 
     const hasPermission = (permissionName) => {

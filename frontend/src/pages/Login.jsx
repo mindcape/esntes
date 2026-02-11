@@ -109,7 +109,7 @@ export default function Login() {
                 width: '100%',
                 maxWidth: '400px'
             }}>
-                <h2 style={{ textAlign: 'center', marginBottom: '1.5rem', fontSize: '1.5rem', fontWeight: 'bold' }}>Login to ESNTES</h2>
+                <h2 style={{ textAlign: 'center', marginBottom: '1.5rem', fontSize: '1.5rem', fontWeight: 'bold' }}>Login to Nibrr</h2>
 
                 {error && <div style={{
                     backgroundColor: '#fef2f2',

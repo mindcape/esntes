@@ -51,7 +51,7 @@ export default function BoardViolations() {
     const fetchViolations = () => {
         if (!user?.community_id) return;
 
-        const token = localStorage.getItem('esntes_token');
+        const token = localStorage.getItem('nibrr_token');
         fetch(`${API_URL}/api/communities/${user.community_id}/violations`, {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -99,7 +99,7 @@ export default function BoardViolations() {
         }
 
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/communities/${user.community_id}/violations`, {
                 method: 'POST',
                 headers: {
@@ -159,7 +159,7 @@ export default function BoardViolations() {
                 url += `&fine_amount=${editData.fine_amount}`;
             }
 
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(url, {
                 method: 'PUT',
                 headers: {

@@ -57,7 +57,7 @@ export default function ManageResidents() {
 
         fetch(endpoint, {
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
+                'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
             }
         })
             .then(res => res.json())
@@ -90,7 +90,7 @@ export default function ManageResidents() {
                 method: method,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
                 },
                 body: JSON.stringify({
                     ...formData,
@@ -139,7 +139,7 @@ export default function ManageResidents() {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
                 },
                 body: JSON.stringify({ is_setup_complete: true })
             });
@@ -168,7 +168,7 @@ export default function ManageResidents() {
             const res = await fetch(`${API_URL}/api/community/residents/${id}`, {
                 method: 'DELETE',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
                 }
             });
             if (res.ok) {
@@ -201,7 +201,7 @@ export default function ManageResidents() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
                 },
                 body: JSON.stringify({ new_password: resetPassword })
             });

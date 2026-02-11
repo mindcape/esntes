@@ -40,7 +40,7 @@ export default function ARCRequests() {
 
     const fetchRequests = () => {
         if (!user?.community_id) return;
-        const token = localStorage.getItem('esntes_token');
+        const token = localStorage.getItem('nibrr_token');
         fetch(`${API_URL}/api/communities/${user.community_id}/arc/my`, {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -97,7 +97,7 @@ export default function ARCRequests() {
         }
 
         try {
-            const token = localStorage.getItem('esntes_token');
+            const token = localStorage.getItem('nibrr_token');
             const res = await fetch(`${API_URL}/api/communities/${user.community_id}/arc`, {
                 method: 'POST',
                 headers: {

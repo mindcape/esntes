@@ -33,7 +33,7 @@ export default function BoardWorkOrders() {
         setLoading(true);
         try {
             const res = await fetch(`${API_URL}/api/communities/work-orders`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('esntes_token')}` }
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` }
             });
             if (res.ok) {
                 const data = await res.json();
@@ -49,7 +49,7 @@ export default function BoardWorkOrders() {
     const fetchVendors = async () => {
         try {
             const res = await fetch(`${API_URL}/api/vendors`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('esntes_token')}` }
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` }
             });
             if (res.ok) {
                 const data = await res.json();
@@ -67,7 +67,7 @@ export default function BoardWorkOrders() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
                 },
                 body: JSON.stringify(formData)
             });
@@ -91,7 +91,7 @@ export default function BoardWorkOrders() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
                 },
                 body: JSON.stringify(bidData)
             });
@@ -125,7 +125,7 @@ export default function BoardWorkOrders() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('esntes_token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
                 }
             });
 
@@ -150,7 +150,7 @@ export default function BoardWorkOrders() {
         // Fetch bids for this WO
         try {
             const res = await fetch(`${API_URL}/api/communities/work-orders/${wo.id}/bids`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('esntes_token')}` }
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` }
             });
             if (res.ok) {
                 const bids = await res.json();

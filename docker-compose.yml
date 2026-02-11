@@ -7,7 +7,7 @@ services:
       - "8000:8000"
     environment:
       # Override dataabse URL to use the postgres service
-      - DATABASE_URL=postgresql://user:password@db:5432/esntes_db
+      - DATABASE_URL=postgresql://user:password@db:5432/nibrr_db
     depends_on:
       - db
 
@@ -18,7 +18,7 @@ services:
     environment:
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=esntes_db
+      - POSTGRES_DB=nibrr_db
     ports:
       - "5432:5432"
 

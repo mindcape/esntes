@@ -9,7 +9,7 @@ export default function Elections() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const token = localStorage.getItem('esntes_token');
+        const token = localStorage.getItem('nibrr_token');
         fetch(`${API_URL}/api/elections/`, {
             headers: {
                 'Authorization': `Bearer ${token}`

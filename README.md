@@ -1,4 +1,4 @@
-# ESNTES HOA Management System
+# Nibrr HOA Management System
 
 ## Deployment Links
 - **Frontend (Amplify)**: https://main.d1h71bpojat3kb.amplifyapp.com/

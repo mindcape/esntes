@@ -13,7 +13,7 @@ export default function Ledger() {
 
     const fetchData = () => {
         if (!user?.community_id) return;
-        const token = localStorage.getItem('esntes_token');
+        const token = localStorage.getItem('nibrr_token');
         const headers = { 'Authorization': `Bearer ${token}` };
 
         fetch(`${API_URL}/api/communities/${user.community_id}/finance/ledger`, { headers })
