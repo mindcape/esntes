@@ -16,7 +16,7 @@ export default function Navbar() {
         <nav style={{ backgroundColor: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ fontWeight: 'bold', fontSize: '1.25rem', color: '#111827' }}>
                 <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center' }}>
-                    <img src="/logo.svg" alt="Nibrr" style={{ height: '40px' }} />
+                    <img src="/logo.svg" alt="Nibrr" style={{ height: '60px' }} />
                 </Link>
             </div>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>

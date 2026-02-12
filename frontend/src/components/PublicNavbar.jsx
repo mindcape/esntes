@@ -7,7 +7,7 @@ export default function PublicNavbar() {
             <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ fontWeight: 'bold', fontSize: '1.5rem', color: '#0066cc', letterSpacing: '-0.5px' }}>
                     <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center' }}>
-                        <img src="/logo.svg" alt="Nibrr" style={{ height: '45px' }} />
+                        <img src="/logo.svg" alt="Nibrr" style={{ height: '60px' }} />
                     </Link>
                 </div>
 
