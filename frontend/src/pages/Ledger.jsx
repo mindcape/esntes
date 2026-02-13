@@ -5,26 +5,23 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
 export default function Ledger() {
-    const { user } = useAuth();
+    const { user, fetchWithAuth } = useAuth();
     const [ledger, setLedger] = useState([]);
     const [summary, setSummary] = useState({ current_balance: 0 });
     const [showPayment, setShowPayment] = useState(false);
     const [success, setSuccess] = useState(null);
 
-    const fetchData = () => {
+    const fetchData = async () => {
         if (!user?.community_id) return;
-        const token = localStorage.getItem('nibrr_token');
-        const headers = { 'Authorization': `Bearer ${token}` };
+        try {
+            const resLedger = await fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/finance/ledger`);
+            if (resLedger.ok) setLedger(await resLedger.json());
 
-        fetch(`${API_URL}/api/communities/${user.community_id}/finance/ledger`, { headers })
-            .then(res => res.json())
-            .then(setLedger)
-            .catch(console.error);
-
-        fetch(`${API_URL}/api/communities/${user.community_id}/finance/balance`, { headers })
-            .then(res => res.json())
-            .then(setSummary)
-            .catch(console.error);
+            const resBalance = await fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/finance/balance`);
+            if (resBalance.ok) setSummary(await resBalance.json());
+        } catch (error) {
+            console.error(error);
+        }
     };
 
     useEffect(() => {

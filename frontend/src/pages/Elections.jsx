@@ -4,27 +4,26 @@ import { Link } from 'react-router-dom';
 import { API_URL } from '../config';
 
 export default function Elections() {
-    const { user } = useAuth();
+    const { user, fetchWithAuth } = useAuth();
     const [elections, setElections] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const token = localStorage.getItem('nibrr_token');
-        fetch(`${API_URL}/api/elections/`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        })
-            .then(res => res.json())
-            .then(data => {
-                if (Array.isArray(data)) setElections(data);
-                else setElections([]);
-                setLoading(false);
-            })
-            .catch(err => {
+        const loadElections = async () => {
+            try {
+                const res = await fetchWithAuth(`${API_URL}/api/elections/`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data)) setElections(data);
+                    else setElections([]);
+                }
+            } catch (err) {
                 console.error(err);
+            } finally {
                 setLoading(false);
-            });
+            }
+        };
+        loadElections();
     }, []);
 
     const getStatusBadge = (election) => {

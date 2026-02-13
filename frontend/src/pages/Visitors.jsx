@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { API_URL } from '../config';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Visitors() {
+    const { fetchWithAuth } = useAuth();
     const [visitorName, setVisitorName] = useState('');
     const [date, setDate] = useState('');
     const [accessCode, setAccessCode] = useState(null);
@@ -10,19 +12,14 @@ export default function Visitors() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const response = await fetch(`${API_URL}/api/visitors/`, {
+            const res = await fetchWithAuth(`${API_URL}/api/visitors/`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({
                     name: visitorName,
                     arrival_date: new Date(date).toISOString()
                 })
             });
-            const data = await response.json();
+            const data = await res.json();
             setAccessCode(data.access_code);
         } catch (err) {
             console.error("Failed to register visitor", err);

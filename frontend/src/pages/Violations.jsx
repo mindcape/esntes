@@ -4,7 +4,7 @@ import { API_URL } from '../config';
 
 // ... (imports remain)
 export default function Violations() {
-    const { user } = useAuth();
+    const { user, fetchWithAuth } = useAuth();
     const [violations, setViolations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -25,32 +25,29 @@ export default function Violations() {
         }
     }, [error, success]);
 
-    const fetchViolations = () => {
+    const fetchViolations = async () => {
         // Ensure user is loaded
         if (!user?.community_id) return;
 
-        const token = localStorage.getItem('nibrr_token');
-
-        fetch(`${API_URL}/api/communities/${user.community_id}/violations/my`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        })
-            .then(res => res.json())
-            .then(data => {
+        try {
+            const res = await fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/violations/my`);
+            if (res.ok) {
+                const data = await res.json();
                 if (Array.isArray(data)) {
                     setViolations(data);
                 } else {
                     setViolations([]);
                 }
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error(err);
-                setError("Failed to load violations.");
+            } else {
                 setViolations([]);
-                setLoading(false);
-            });
+            }
+        } catch (err) {
+            console.error(err);
+            setError("Failed to load violations.");
+            setViolations([]);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handlePayFine = async (violationId, amount) => {
@@ -59,12 +56,8 @@ export default function Violations() {
         setSuccess(null);
 
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/communities/${user.community_id}/violations/${violationId}/pay`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            const res = await fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/violations/${violationId}/pay`, {
+                method: 'POST'
             });
             if (res.ok) {
                 setSuccess('Fine paid successfully!');

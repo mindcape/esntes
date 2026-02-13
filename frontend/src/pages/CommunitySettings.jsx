@@ -7,7 +7,7 @@ import { Edit, Trash2, Key, CheckSquare, Square, UserMinus, Check, User } from '
 export default function CommunitySettings() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, fetchWithAuth } = useAuth();
     const canManageSettings = user?.permissions?.includes('manage_community_settings');
 
     useEffect(() => {
@@ -39,10 +39,7 @@ export default function CommunitySettings() {
 
     const fetchCommunity = () => {
         setLoading(true);
-        const token = localStorage.getItem('nibrr_token');
-        fetch(`${API_URL}/api/admin/communities/${id}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        })
+        fetchWithAuth(`${API_URL}/api/admin/communities/${id}`)
             .then(res => {
                 if (!res.ok) throw new Error("Failed to fetch community");
                 return res.json();
@@ -61,12 +58,8 @@ export default function CommunitySettings() {
     // Finance overview: delinquencies, operating account balance, pending approvals
     const fetchFinanceOverview = async (communityId) => {
         try {
-            const token = localStorage.getItem('nibrr_token');
-
             // 1) Delinquencies
-            const dRes = await fetch(`${API_URL}/api/communities/${communityId}/finance/delinquencies`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const dRes = await fetchWithAuth(`${API_URL}/api/communities/${communityId}/finance/delinquencies`);
             if (dRes.ok) {
                 const dData = await dRes.json();
                 setDelinquents(Array.isArray(dData) ? dData : []);
@@ -78,18 +71,14 @@ export default function CommunitySettings() {
             }
 
             // 2) Operating account: find account code 1010 then compute balance via ledger
-            const aRes = await fetch(`${API_URL}/api/communities/${communityId}/finance/accounts`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const aRes = await fetchWithAuth(`${API_URL}/api/communities/${communityId}/finance/accounts`);
             let opBalance = null;
             if (aRes.ok) {
                 const accounts = await aRes.json();
                 const op = (accounts || []).find(ac => ac.code === '1010' || (ac.name && ac.name.toLowerCase().includes('operat')));
                 if (op) {
                     // fetch ledger and sum entries for this account
-                    const lRes = await fetch(`${API_URL}/api/communities/${communityId}/finance/ledger?limit=500`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
+                    const lRes = await fetchWithAuth(`${API_URL}/api/communities/${communityId}/finance/ledger?limit=500`);
                     if (lRes.ok) {
                         const txs = await lRes.json();
                         let bal = 0;
@@ -109,9 +98,7 @@ export default function CommunitySettings() {
             setOperatingBalance(opBalance);
 
             // 3) Pending approvals (ARC)
-            const arcRes = await fetch(`${API_URL}/api/communities/${communityId}/arc`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const arcRes = await fetchWithAuth(`${API_URL}/api/communities/${communityId}/arc`);
             if (arcRes.ok) {
                 const arcData = await arcRes.json();
                 const pending = (arcData || []).filter(r => r.status === 'PENDING' || r.status === 0).length;
@@ -181,13 +168,8 @@ export default function CommunitySettings() {
         if (!validateForm()) return;
 
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/admin/communities/${community.id}`, {
+            const res = await fetchWithAuth(`${API_URL}/api/admin/communities/${community.id}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({
                     name: community.name,
                     subdomain: community.subdomain,
@@ -453,6 +435,7 @@ export default function CommunitySettings() {
 }
 
 function ImportResidents({ communityId }) {
+    const { fetchWithAuth } = useAuth();
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
 
@@ -469,10 +452,8 @@ function ImportResidents({ communityId }) {
         formData.append('file', fileInput.files[0]);
 
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/import`, {
+            const res = await fetchWithAuth(`${API_URL}/api/admin/communities/${communityId}/import`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
                 body: formData
             });
             const data = await res.json();
@@ -512,6 +493,7 @@ function ImportResidents({ communityId }) {
 }
 
 function TeamSettings({ communityId }) {
+    const { fetchWithAuth } = useAuth();
     const [admins, setAdmins] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -523,10 +505,7 @@ function TeamSettings({ communityId }) {
 
     const fetchAdmins = () => {
         setLoading(true);
-        const token = localStorage.getItem('nibrr_token');
-        fetch(`${API_URL}/api/admin/communities/${communityId}/admins`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        })
+        fetchWithAuth(`${API_URL}/api/admin/communities/${communityId}/admins`)
             .then(res => res.json())
             .then(data => {
                 if (Array.isArray(data)) setAdmins(data);
@@ -573,6 +552,7 @@ function TeamSettings({ communityId }) {
 }
 
 function MembersList({ communityId }) {
+    const { fetchWithAuth } = useAuth();
     const [members, setMembers] = useState([]);
     const [roles, setRoles] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -632,17 +612,12 @@ function MembersList({ communityId }) {
 
     const fetchMembers = () => {
         setLoading(true);
-        const token = localStorage.getItem('nibrr_token');
 
         // Fetch Members
-        const p1 = fetch(`${API_URL}/api/admin/communities/${communityId}/members`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        }).then(res => res.json());
+        const p1 = fetchWithAuth(`${API_URL}/api/admin/communities/${communityId}/members`).then(res => res.json());
 
         // Fetch Roles
-        const p2 = fetch(`${API_URL}/api/admin/roles`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        }).then(res => res.json());
+        const p2 = fetchWithAuth(`${API_URL}/api/admin/roles`).then(res => res.json());
 
         Promise.all([p1, p2])
             .then(([membersData, rolesData]) => {
@@ -681,13 +656,8 @@ function MembersList({ communityId }) {
         if (!window.confirm(`Are you sure you want to deactivate ${selectedUsers.size} users?`)) return;
 
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/members/bulk-delete`, {
+            const res = await fetchWithAuth(`${API_URL}/api/admin/communities/${communityId}/members/bulk-delete`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({ user_ids: Array.from(selectedUsers) })
             });
             const data = await res.json();
@@ -707,13 +677,8 @@ function MembersList({ communityId }) {
         if (!window.confirm("Are you sure you want to deactivate this user?")) return;
         // Re-use bulk delete endpoint for single user for simplicity
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/members/bulk-delete`, {
+            const res = await fetchWithAuth(`${API_URL}/api/admin/communities/${communityId}/members/bulk-delete`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({ user_ids: [memberId] })
             });
             if (res.ok) {
@@ -731,13 +696,8 @@ function MembersList({ communityId }) {
 
     const handleApprove = async (memberId) => {
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/members/${memberId}`, {
+            const res = await fetchWithAuth(`${API_URL}/api/admin/communities/${communityId}/members/${memberId}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({ is_setup_complete: true })
             });
             if (res.ok) {
@@ -762,13 +722,8 @@ function MembersList({ communityId }) {
         setError(null);
         setSuccess(null);
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/members`, {
+            const res = await fetchWithAuth(`${API_URL}/api/admin/communities/${communityId}/members`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({
                     ...formData,
                     phone: formData.phone ? formData.phone.replace(/[^\d]/g, '') : ''
@@ -807,12 +762,11 @@ function MembersList({ communityId }) {
         if (!passwordResetUser) return;
 
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/admin/users/${passwordResetUser.id}/reset-password`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+            const res = await fetchWithAuth(`${API_URL}/api/admin/users/${passwordResetUser.id}/reset-password`, {
+                method: 'POST'
             });
             const data = await res.json();
+
             if (res.ok) {
                 // Update the modal with the new password instead of closing it
                 setPasswordResetUser({ ...passwordResetUser, newPassword: data.new_password });
@@ -847,13 +801,8 @@ function MembersList({ communityId }) {
     const handleUpdate = async (e) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/admin/communities/${communityId}/members/${formData.id}`, {
+            const res = await fetchWithAuth(`${API_URL}/api/admin/communities/${communityId}/members/${formData.id}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({
                     ...formData,
                     phone: formData.phone ? formData.phone.replace(/[^\d]/g, '') : ''

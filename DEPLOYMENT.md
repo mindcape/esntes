@@ -18,7 +18,29 @@ This guide walks you through deploying the **Nibrr HOA Portal** using **AWS Ampl
         `postgres://neondb_owner:password@ep-cool-frog-123456.us-east-2.aws.neon.tech/neondb?sslmode=require`
     *   **Keep this string safe**, you will need it for the Backend configuration.
 
-**AWS Option (RDS Free Tier):**
+### Step 3: Configure Storage (AWS S3)
+
+You can use the helper script to set up your S3 Bucket and IAM Role:
+
+```bash
+chmod +x scripts/setup_aws_resources.sh
+./scripts/setup_aws_resources.sh
+```
+
+This script will Output:
+- `S3_BUCKET_NAME`
+- `IAM Role ARN` (Use this for App Runner or EC2 Instance Profile)
+- `IAM Policy ARN`
+
+Update your `backend/.env` (or App Runner Environment Variables):
+```bash
+STORAGE_TYPE=s3
+S3_BUCKET_NAME=<your-bucket-name>
+AWS_REGION=us-east-1
+# AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are NOT needed if using the IAM Role
+```
+
+### Step 4: AWS Option (RDS Free Tier) - Alternative to Neon
 1.  Go to **RDS** Console -> **Create Database**.
 2.  Select **PostgreSQL** -> **Free Tier**.
 3.  **Public Access**: Yes (Important for App Runner to connect easily without complex VPC setup for now).

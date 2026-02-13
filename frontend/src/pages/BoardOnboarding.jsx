@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../config';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function BoardOnboarding() {
+    const { fetchWithAuth } = useAuth();
     const [status, setStatus] = useState({ is_active: false, charges_enabled: false, payouts_enabled: false });
     const [loading, setLoading] = useState(true);
 
@@ -11,9 +13,7 @@ export default function BoardOnboarding() {
 
     const checkStatus = async () => {
         try {
-            const res = await fetch(`${API_URL}/api/payments/status`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` }
-            });
+            const res = await fetchWithAuth(`${API_URL}/api/payments/status`);
             if (res.ok) {
                 const data = await res.json();
                 setStatus(data);
@@ -27,9 +27,8 @@ export default function BoardOnboarding() {
 
     const handleEnablePayments = async () => {
         try {
-            const res = await fetch(`${API_URL}/api/payments/onboard`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` }
+            const res = await fetchWithAuth(`${API_URL}/api/payments/onboard`, {
+                method: 'POST'
             });
             if (res.ok) {
                 const data = await res.json();

@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
 export default function Documents() {
-    const { user } = useAuth();
+    const { user, fetchWithAuth } = useAuth();
     const [documents, setDocuments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -18,6 +18,7 @@ export default function Documents() {
         description: '',
         file_url: ''
     });
+    const [selectedFile, setSelectedFile] = useState(null);
 
     // UI State
     const [error, setError] = useState(null);
@@ -43,14 +44,10 @@ export default function Documents() {
     const fetchDocuments = () => {
         if (!user?.community_id) return;
         const role = user?.role?.name || user?.role || 'resident'; // Handle object or string role
-        const token = localStorage.getItem('nibrr_token');
-        fetch(`${API_URL}/api/communities/${user.community_id}/documents?user_role=${role}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        })
+
+        fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/documents?user_role=${role}`)
             .then(res => {
-                if (res.status === 401) throw new Error("Unauthorized");
+                if (!res.ok) throw new Error("Failed to load documents");
                 return res.json();
             })
             .then(data => {
@@ -60,8 +57,7 @@ export default function Documents() {
             })
             .catch(err => {
                 console.error(err);
-                if (err.message === "Unauthorized") setError("Please log in again.");
-                else setError("Failed to load documents.");
+                setError("Failed to load documents.");
                 setLoading(false);
             });
     };
@@ -74,20 +70,40 @@ export default function Documents() {
             return;
         }
 
-        if (!formData.file_url || !formData.file_url.trim()) {
-            setError('File URL is required.');
+        if (!selectedFile) {
+            setError('Please select a file to upload.');
             return;
         }
 
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/communities/${user.community_id}/documents`, {
+            // 1. Upload File
+            const uploadFormData = new FormData();
+            uploadFormData.append('file', selectedFile);
+
+            setSuccess('Uploading file...');
+
+            const uploadRes = await fetchWithAuth(`${API_URL}/api/upload`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(formData)
+                body: uploadFormData
+            });
+
+            if (!uploadRes.ok) {
+                const err = await uploadRes.json();
+                throw new Error(err.detail || 'File upload failed');
+            }
+
+            const uploadData = await uploadRes.json();
+            const fileUrl = uploadData.url;
+
+            // 2. Create Document Record
+            const docPayload = {
+                ...formData,
+                file_url: fileUrl
+            };
+
+            const res = await fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/documents`, {
+                method: 'POST',
+                body: JSON.stringify(docPayload)
             });
 
             if (res.ok) {
@@ -99,15 +115,16 @@ export default function Documents() {
                     description: '',
                     file_url: ''
                 });
+                setSelectedFile(null);
                 setSuccess('Document uploaded successfully!');
                 fetchDocuments();
             } else {
                 const error = await res.json();
-                setError(error.detail || 'Failed to upload document.');
+                setError(error.detail || 'Failed to save document metadata.');
             }
         } catch (err) {
             console.error(err);
-            setError('Error uploading document.');
+            setError(err.message || 'Error uploading document.');
         }
     };
 
@@ -115,12 +132,8 @@ export default function Documents() {
         if (!confirm('Are you sure you want to delete this document?')) return;
 
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/communities/${user.community_id}/documents/${docId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            const res = await fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/documents/${docId}`, {
+                method: 'DELETE'
             });
 
             if (res.ok) {
@@ -165,6 +178,44 @@ export default function Documents() {
 
         return matchesSearch && matchesCategory;
     });
+
+    const handleDownload = async (fileUrl, title) => {
+        try {
+            setSuccess('Downloading...');
+            // Determine if we need to add auth headers (e.g. if it's a protected endpoint)
+            // For now, assuming static files are public or cookie-auth handled if same domain.
+            // If using S3 signed URLs, standard fetch is fine.
+            // If using local static files, standard fetch is fine.
+
+            const response = await fetch(fileUrl);
+            if (!response.ok) throw new Error('Network response was not ok');
+
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+
+            // Guess extension
+            let ext = 'pdf';
+            if (fileUrl.toLowerCase().endsWith('.jpg') || fileUrl.toLowerCase().endsWith('.jpeg')) ext = 'jpg';
+            else if (fileUrl.toLowerCase().endsWith('.png')) ext = 'png';
+            else if (fileUrl.toLowerCase().endsWith('.pdf')) ext = 'pdf';
+            else {
+                const parts = fileUrl.split('.');
+                if (parts.length > 1) ext = parts.pop().split('?')[0];
+            }
+
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = `${title}.${ext}`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(blobUrl);
+            setSuccess(null); // Clear "Downloading..." status
+        } catch (err) {
+            console.error('Download failed:', err);
+            setError('Failed to download document.');
+        }
+    };
 
     if (loading) return <div className="container">Loading...</div>;
 
@@ -281,7 +332,7 @@ export default function Documents() {
 
                                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                                         <button
-                                            onClick={() => window.open(doc.file_url, '_blank')}
+                                            onClick={() => handleDownload(doc.file_url, doc.title)}
                                             className="btn btn-primary"
                                             style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
                                         >
@@ -380,16 +431,37 @@ export default function Documents() {
 
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-                                    File URL * <span style={{ fontSize: '0.85rem', color: '#666', fontWeight: 'normal' }}>(Mock - in production, use file upload)</span>
+                                    File *
                                 </label>
                                 <input
-                                    type="text"
-                                    value={formData.file_url}
-                                    onChange={(e) => setFormData({ ...formData, file_url: e.target.value })}
+                                    type="file"
+                                    accept=".jpg,.jpeg,.png,.pdf"
+                                    onChange={(e) => {
+                                        const file = e.target.files[0];
+                                        if (file) {
+                                            const validTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+                                            if (!validTypes.includes(file.type)) {
+                                                setError('Invalid file type. Allowed: JPG, PNG, PDF.');
+                                                e.target.value = '';
+                                                setSelectedFile(null);
+                                                return;
+                                            }
+                                            if (file.size > 10 * 1024 * 1024) {
+                                                setError('File size exceeds 10MB limit.');
+                                                e.target.value = '';
+                                                setSelectedFile(null);
+                                                return;
+                                            }
+                                            setError(null); // Clear any previous errors
+                                            setSelectedFile(file);
+                                        }
+                                    }}
                                     required
                                     style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #ddd' }}
-                                    placeholder="/documents/example.pdf"
                                 />
+                                <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.25rem' }}>
+                                    Allowed file types: .jpg, .jpeg, .png, .pdf (Max size: 10MB)
+                                </p>
                             </div>
 
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>

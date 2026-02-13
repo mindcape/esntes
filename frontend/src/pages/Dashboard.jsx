@@ -20,6 +20,7 @@ const StatCard = ({ title, value, trend, icon, to }) => (
 
 
 const CommunityInfo = () => {
+    const { fetchWithAuth } = useAuth();
     const [info, setInfo] = React.useState(null);
     const [board, setBoard] = React.useState([]);
 
@@ -28,9 +29,7 @@ const CommunityInfo = () => {
 
         const fetchInfo = async () => {
             try {
-                const token = localStorage.getItem('nibrr_token');
-                const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-                const res = await fetch(`${API_URL}/api/community-info/info`, { headers });
+                const res = await fetchWithAuth(`${API_URL}/api/community-info/info`);
 
                 if (res.ok) {
                     const data = await res.json();
@@ -43,9 +42,7 @@ const CommunityInfo = () => {
 
         const fetchBoard = async () => {
             try {
-                const token = localStorage.getItem('nibrr_token');
-                const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-                const res = await fetch(`${API_URL}/api/community-info/board`, { headers });
+                const res = await fetchWithAuth(`${API_URL}/api/community-info/board`);
 
                 if (res.ok) {
                     const data = await res.json();
@@ -93,6 +90,7 @@ const CommunityInfo = () => {
 };
 
 const ResidentDashboard = () => {
+    const { fetchWithAuth } = useAuth();
     const [stats, setStats] = React.useState({
         balance: 0,
         open_requests: 0,
@@ -106,9 +104,7 @@ const ResidentDashboard = () => {
         const token = localStorage.getItem('nibrr_token');
 
         if (token) {
-            fetch(`${API_URL}/api/dashboard/resident/stats`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            fetchWithAuth(`${API_URL}/api/dashboard/resident/stats`)
                 .then(res => res.json())
                 .then(data => { if (isMounted) setStats(data); })
                 .catch(console.error);
@@ -197,6 +193,7 @@ const ResidentDashboard = () => {
 };
 
 const BoardDashboard = () => {
+    const { fetchWithAuth } = useAuth();
     const [stats, setStats] = React.useState({ delinquency: 0, open_work_orders: 0, operating_account: 0, pending_arc: 0 });
 
     React.useEffect(() => {
@@ -204,9 +201,7 @@ const BoardDashboard = () => {
         const token = localStorage.getItem('nibrr_token');
 
         if (token) {
-            fetch(`${API_URL}/api/dashboard/board/stats`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            fetchWithAuth(`${API_URL}/api/dashboard/board/stats`)
                 .then(res => res.json())
                 .then(data => { if (isMounted) setStats(data); })
                 .catch(console.error);
@@ -239,7 +234,7 @@ const BoardDashboard = () => {
 };
 
 export default function Dashboard() {
-    const { user } = useAuth();
+    const { user, fetchWithAuth } = useAuth();
     const [community, setCommunity] = React.useState(null);
 
     React.useEffect(() => {
@@ -247,9 +242,7 @@ export default function Dashboard() {
         const token = localStorage.getItem('nibrr_token');
 
         if (token) {
-            fetch(`${API_URL}/api/community-info/info`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            fetchWithAuth(`${API_URL}/api/community-info/info`)
                 .then(res => res.json())
                 .then(data => { if (isMounted) setCommunity(data); })
                 .catch(console.error);

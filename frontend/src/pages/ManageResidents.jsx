@@ -39,7 +39,7 @@ export default function ManageResidents() {
         setFormData({ ...formData, phone: formatted });
     };
 
-    const { user } = useAuth();
+    const { user, fetchWithAuth } = useAuth();
     // const isAdminOrBoard = user?.role === 'admin' || user?.role === 'board' || user?.role === 'super_admin';
     const canManageResidents = user?.permissions?.includes('manage_residents');
 
@@ -55,11 +55,7 @@ export default function ManageResidents() {
             ? `${API_URL}/api/community/all-residents`
             : `${API_URL}/api/community/directory`;
 
-        fetch(endpoint, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
-            }
-        })
+        fetchWithAuth(endpoint)
             .then(res => res.json())
             .then(data => {
                 if (Array.isArray(data)) {
@@ -86,12 +82,8 @@ export default function ManageResidents() {
                 ? `${API_URL}/api/community/residents/${editingId}`
                 : `${API_URL}/api/community/residents`;
 
-            const res = await fetch(url, {
+            const res = await fetchWithAuth(url, {
                 method: method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
-                },
                 body: JSON.stringify({
                     ...formData,
                     phone: formData.phone ? formData.phone.replace(/[^\d]/g, '') : ''
@@ -135,12 +127,8 @@ export default function ManageResidents() {
 
     const handleApprove = async (resident) => {
         try {
-            const res = await fetch(`${API_URL}/api/community/residents/${resident.id}`, {
+            const res = await fetchWithAuth(`${API_URL}/api/community/residents/${resident.id}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
-                },
                 body: JSON.stringify({ is_setup_complete: true })
             });
 
@@ -165,11 +153,8 @@ export default function ManageResidents() {
         setError('');
 
         try {
-            const res = await fetch(`${API_URL}/api/community/residents/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
-                }
+            const res = await fetchWithAuth(`${API_URL}/api/community/residents/${id}`, {
+                method: 'DELETE'
             });
             if (res.ok) {
                 fetchResidents();
@@ -197,12 +182,8 @@ export default function ManageResidents() {
         setError('');
 
         try {
-            const res = await fetch(`${API_URL}/api/community/residents/${editingId}/reset-password`, {
+            const res = await fetchWithAuth(`${API_URL}/api/community/residents/${editingId}/reset-password`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
-                },
                 body: JSON.stringify({ new_password: resetPassword })
             });
 

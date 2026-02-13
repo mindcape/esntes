@@ -4,37 +4,39 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
 export default function Maintenance() {
-    const { user } = useAuth();
+    const { user, fetchWithAuth } = useAuth();
     const [requests, setRequests] = useState([]);
     const [newRequest, setNewRequest] = useState({ title: '', description: '', category: 'General' });
 
     useEffect(() => {
         if (!user?.community_id) return;
 
-        const token = localStorage.getItem('nibrr_token') || localStorage.getItem('token');
-        fetch(`${API_URL}/api/communities/${user.community_id}/maintenance`, {
-            headers: {
-                'Accept': 'application/json',
-                'Authorization': `Bearer ${token}`
+        const loadRequests = async () => {
+            try {
+                const res = await fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/maintenance`, {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data)) setRequests(data);
+                    else setRequests([]);
+                }
+            } catch (err) {
+                console.error("Failed to fetch requests", err);
             }
-        })
-            .then(res => res.json())
-            .then(data => {
-                if (Array.isArray(data)) setRequests(data);
-                else setRequests([]);
-            })
-            .catch(err => console.error("Failed to fetch requests", err));
+        };
+        loadRequests();
     }, [user]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('nibrr_token') || localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/api/communities/${user.community_id}/maintenance`, {
+            const response = await fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/maintenance`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(newRequest)
             });

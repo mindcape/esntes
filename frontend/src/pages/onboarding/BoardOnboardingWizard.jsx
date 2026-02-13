@@ -4,7 +4,7 @@ import { API_URL } from '../../config';
 import { useAuth } from '../../contexts/AuthContext';
 
 const BoardOnboardingWizard = () => {
-    const { user } = useAuth();
+    const { user, fetchWithAuth } = useAuth();
     const navigate = useNavigate();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
@@ -32,10 +32,7 @@ const BoardOnboardingWizard = () => {
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const token = localStorage.getItem('nibrr_token');
-                const res = await fetch(`${API_URL}/api/community/settings`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const res = await fetchWithAuth(`${API_URL}/api/community/settings`);
                 if (res.ok) {
                     const data = await res.json();
                     if (data.branding_settings) setBranding({ ...branding, ...data.branding_settings });
@@ -51,13 +48,8 @@ const BoardOnboardingWizard = () => {
     const handleSaveSettings = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/community/settings`, {
+            const res = await fetchWithAuth(`${API_URL}/api/community/settings`, {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
                 body: JSON.stringify({
                     branding_settings: branding,
                     modules_enabled: modules
@@ -79,13 +71,8 @@ const BoardOnboardingWizard = () => {
         if (emails.length === 0) return;
 
         try {
-            const token = localStorage.getItem('nibrr_token');
-            await fetch(`${API_URL}/api/community/invite-board`, {
+            await fetchWithAuth(`${API_URL}/api/community/invite-board`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
                 body: JSON.stringify({ emails })
             });
         } catch (e) {

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
 export default function BoardAnnouncements() {
+    const { fetchWithAuth } = useAuth();
     const [announcements, setAnnouncements] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -20,9 +22,7 @@ export default function BoardAnnouncements() {
     const fetchAnnouncements = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/api/communication`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` }
-            });
+            const res = await fetchWithAuth(`${API_URL}/api/communication`);
             if (res.ok) {
                 const data = await res.json();
                 setAnnouncements(Array.isArray(data) ? data : []);
@@ -39,11 +39,10 @@ export default function BoardAnnouncements() {
         if (!window.confirm("This will immediately send an email to the selected audience. Are you sure?")) return;
 
         try {
-            const res = await fetch(`${API_URL}/api/communication`, {
+            const res = await fetchWithAuth(`${API_URL}/api/communication`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(formData)
             });

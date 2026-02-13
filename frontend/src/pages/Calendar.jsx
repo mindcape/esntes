@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
 export default function Calendar() {
-    const { user } = useAuth();
+    const { user, fetchWithAuth } = useAuth();
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -28,11 +28,7 @@ export default function Calendar() {
         if (!user?.community_id) return;
         setLoading(true);
         // NEW NESTED ENDPOINT
-        fetch(`${API_URL}/api/communities/${user.community_id}/events`, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
-            }
-        })
+        fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/events`)
             .then(res => res.json())
             .then(data => {
                 if (Array.isArray(data)) {
@@ -93,11 +89,10 @@ export default function Calendar() {
                 ? `${API_URL}/api/communities/${user.community_id}/events/${selectedEvent.id}`
                 : `${API_URL}/api/communities/${user.community_id}/events`;
 
-            const res = await fetch(url, {
+            const res = await fetchWithAuth(url, {
                 method: selectedEvent ? 'PUT' : 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` // Auth for admin check
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     ...payload,
@@ -153,9 +148,8 @@ export default function Calendar() {
 
         try {
             // NEW NESTED ENDPOINT
-            const res = await fetch(`${API_URL}/api/communities/${user.community_id}/events/${eventId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` }
+            const res = await fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/events/${eventId}`, {
+                method: 'DELETE'
             });
 
             if (res.ok) {

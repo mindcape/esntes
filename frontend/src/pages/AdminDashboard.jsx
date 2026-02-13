@@ -5,7 +5,7 @@ import { API_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function AdminDashboard() {
-    const { user, login } = useAuth();
+    const { user, login, fetchWithAuth } = useAuth();
     const canManageCommunities = user?.permissions?.includes('manage_communities');
     const navigate = useNavigate();
     const [communities, setCommunities] = useState([]);
@@ -68,12 +68,7 @@ export default function AdminDashboard() {
 
     const fetchCommunities = () => {
         setLoading(true);
-        const token = localStorage.getItem('nibrr_token');
-        fetch(`${API_URL}/api/admin/communities`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        })
+        fetchWithAuth(`${API_URL}/api/admin/communities`)
             .then(res => {
                 if (res.status === 401) {
                     throw new Error("Unauthorized");
@@ -125,12 +120,10 @@ export default function AdminDashboard() {
         if (!validateForm()) return;
 
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/admin/communities`, {
+            const res = await fetchWithAuth(`${API_URL}/api/admin/communities`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(formData)
             });

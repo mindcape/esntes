@@ -6,7 +6,7 @@ import { API_URL } from '../config';
 // ... (imports)
 
 export default function Directory() {
-    const { user } = useAuth();
+    const { user, fetchWithAuth } = useAuth();
     const [profiles, setProfiles] = useState([]);
     const [board, setBoard] = useState([]);
     const [optedIn, setOptedIn] = useState(false);
@@ -15,8 +15,6 @@ export default function Directory() {
 
     useEffect(() => {
         let isMounted = true;
-        const token = localStorage.getItem('nibrr_token');
-        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
 
         // Auto-dismiss notifications
         if (error || success) {
@@ -27,7 +25,7 @@ export default function Directory() {
             return () => clearTimeout(timer);
         }
 
-        fetch(`${API_URL}/api/community/directory`, { headers })
+        fetchWithAuth(`${API_URL}/api/community/directory`)
             .then(res => res.json())
             .then(data => {
                 if (isMounted && Array.isArray(data)) {
@@ -37,7 +35,7 @@ export default function Directory() {
             })
             .catch(console.error);
 
-        fetch(`${API_URL}/api/community-info/board`, { headers })
+        fetchWithAuth(`${API_URL}/api/community-info/board`)
             .then(res => res.json())
             .then(data => { if (isMounted) setBoard(data); })
             .catch(console.error);
@@ -49,13 +47,11 @@ export default function Directory() {
         setError(null);
         setSuccess(null);
         const newStatus = !optedIn;
-        const token = localStorage.getItem('nibrr_token');
 
         try {
-            const res = await fetch(`${API_URL}/api/community/directory/opt-in?status=${newStatus}`, {
+            const res = await fetchWithAuth(`${API_URL}/api/community/directory/opt-in?status=${newStatus}`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             });
@@ -64,7 +60,7 @@ export default function Directory() {
                 setOptedIn(newStatus);
                 if (newStatus) {
                     // Refetch to see self
-                    const dirRes = await fetch(`${API_URL}/api/community/directory`, { headers: { 'Authorization': `Bearer ${token}` } });
+                    const dirRes = await fetchWithAuth(`${API_URL}/api/community/directory`);
                     const dirData = await dirRes.json();
                     setProfiles(dirData);
                     setSuccess("You have opted IN. Neighbors can now see your profile.");

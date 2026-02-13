@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
 export default function ManageVendors() {
+    const { fetchWithAuth } = useAuth();
     const [vendors, setVendors] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -24,21 +26,22 @@ export default function ManageVendors() {
         fetchVendors();
     }, []);
 
-    const fetchVendors = () => {
+    const fetchVendors = async () => {
         setLoading(true);
-        fetch(`${API_URL}/api/vendors`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` }
-        })
-            .then(res => res.json())
-            .then(data => {
+        try {
+            const res = await fetchWithAuth(`${API_URL}/api/vendors`);
+            if (res.ok) {
+                const data = await res.json();
                 setVendors(Array.isArray(data) ? data : []);
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error(err);
+            } else {
                 setError('Failed to load vendors');
-                setLoading(false);
-            });
+            }
+        } catch (err) {
+            console.error(err);
+            setError('Failed to load vendors');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -50,11 +53,10 @@ export default function ManageVendors() {
                 ? `${API_URL}/api/vendors/${editingId}`
                 : `${API_URL}/api/vendors`;
 
-            const res = await fetch(url, {
+            const res = await fetchWithAuth(url, {
                 method: method,
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(formData)
             });
@@ -95,9 +97,8 @@ export default function ManageVendors() {
     const handleDelete = async (id) => {
         if (!window.confirm("Are you sure you want to delete this vendor?")) return;
         try {
-            const res = await fetch(`${API_URL}/api/vendors/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` }
+            const res = await fetchWithAuth(`${API_URL}/api/vendors/${id}`, {
+                method: 'DELETE'
             });
             if (res.ok) fetchVendors();
             else setError("Failed to delete");

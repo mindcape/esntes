@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
 export default function BoardViolations() {
-    const { user } = useAuth();
+    const { user, fetchWithAuth } = useAuth();
     // ... (imports)
     const [violations, setViolations] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -48,25 +48,21 @@ export default function BoardViolations() {
         }
     }, [error, success]);
 
-    const fetchViolations = () => {
+    const fetchViolations = async () => {
         if (!user?.community_id) return;
 
-        const token = localStorage.getItem('nibrr_token');
-        fetch(`${API_URL}/api/communities/${user.community_id}/violations`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        })
-            .then(res => res.json())
-            .then(data => {
+        try {
+            const res = await fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/violations`);
+            if (res.ok) {
+                const data = await res.json();
                 setViolations(data);
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error(err);
-                setError("Failed to load violations.");
-                setLoading(false);
-            });
+            }
+        } catch (err) {
+            console.error(err);
+            setError("Failed to load violations.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleOpenModal = () => {
@@ -99,12 +95,10 @@ export default function BoardViolations() {
         }
 
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/communities/${user.community_id}/violations`, {
+            const res = await fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/violations`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     resident_id: formData.resident_id ? parseInt(formData.resident_id) : 0,
@@ -159,12 +153,8 @@ export default function BoardViolations() {
                 url += `&fine_amount=${editData.fine_amount}`;
             }
 
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(url, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            const res = await fetchWithAuth(url, {
+                method: 'PUT'
             });
 
             if (res.ok) {

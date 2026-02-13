@@ -4,7 +4,7 @@ import { API_URL } from '../config';
 import BoardOnboarding from './BoardOnboarding';
 
 export default function Financials() {
-    const { user } = useAuth();
+    const { user, fetchWithAuth } = useAuth();
     const [delinquencies, setDelinquencies] = useState([]);
     const [balanceSheet, setBalanceSheet] = useState(null);
     const [incomeStatement, setIncomeStatement] = useState(null);
@@ -14,13 +14,11 @@ export default function Financials() {
 
     useEffect(() => {
         if (!user?.community_id) return;
-        const token = localStorage.getItem('nibrr_token');
-        const headers = { 'Authorization': `Bearer ${token}` };
 
         Promise.all([
-            fetch(`${API_URL}/api/communities/${user.community_id}/finance/delinquencies`, { headers }).then(r => r.json()),
-            fetch(`${API_URL}/api/communities/${user.community_id}/finance/reports/balance-sheet`, { headers }).then(r => r.json()),
-            fetch(`${API_URL}/api/communities/${user.community_id}/finance/reports/income-statement`, { headers }).then(r => r.json())
+            fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/finance/delinquencies`).then(r => r.json()),
+            fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/finance/reports/balance-sheet`).then(r => r.json()),
+            fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/finance/reports/income-statement`).then(r => r.json())
         ]).then(([delinqData, bsData, isData]) => {
             setDelinquencies(Array.isArray(delinqData) ? delinqData : []);
             setBalanceSheet(bsData);
@@ -34,10 +32,7 @@ export default function Financials() {
 
     const fetchDelinquencies = () => {
         if (!user?.community_id) return;
-        const token = localStorage.getItem('nibrr_token');
-        fetch(`${API_URL}/api/communities/${user.community_id}/finance/delinquencies`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        })
+        fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/finance/delinquencies`)
             .then(res => res.json())
             .then(data => setDelinquencies(Array.isArray(data) ? data : []))
             .catch(console.error);
@@ -47,10 +42,8 @@ export default function Financials() {
         setMessage('');
         if (!user?.community_id) return;
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/communities/${user.community_id}/finance/assessments/generate`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+            const res = await fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/finance/assessments/generate`, {
+                method: 'POST'
             });
             const data = await res.json();
             if (res.ok) {
@@ -68,10 +61,8 @@ export default function Financials() {
         setMessage('');
         if (!user?.community_id) return;
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/communities/${user.community_id}/finance/assessments/late-fees`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+            const res = await fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/finance/assessments/late-fees`, {
+                method: 'POST'
             });
             const data = await res.json();
             if (res.ok) {

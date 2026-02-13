@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
 export default function BoardWorkOrders() {
+    const { fetchWithAuth } = useAuth();
     const [workOrders, setWorkOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -32,9 +34,7 @@ export default function BoardWorkOrders() {
     const fetchWorkOrders = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/api/communities/work-orders`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` }
-            });
+            const res = await fetchWithAuth(`${API_URL}/api/communities/work-orders`);
             if (res.ok) {
                 const data = await res.json();
                 setWorkOrders(data);
@@ -48,9 +48,7 @@ export default function BoardWorkOrders() {
 
     const fetchVendors = async () => {
         try {
-            const res = await fetch(`${API_URL}/api/vendors`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` }
-            });
+            const res = await fetchWithAuth(`${API_URL}/api/vendors`);
             if (res.ok) {
                 const data = await res.json();
                 setVendors(data);
@@ -63,11 +61,10 @@ export default function BoardWorkOrders() {
     const handleCreate = async (e) => {
         e.preventDefault();
         try {
-            const res = await fetch(`${API_URL}/api/communities/work-orders`, {
+            const res = await fetchWithAuth(`${API_URL}/api/communities/work-orders`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(formData)
             });
@@ -87,11 +84,10 @@ export default function BoardWorkOrders() {
         e.preventDefault();
         if (!selectedWO) return;
         try {
-            const res = await fetch(`${API_URL}/api/communities/work-orders/${selectedWO.id}/bids`, {
+            const res = await fetchWithAuth(`${API_URL}/api/communities/work-orders/${selectedWO.id}/bids`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(bidData)
             });
@@ -121,11 +117,10 @@ export default function BoardWorkOrders() {
         if (!confirm(`Are you sure you want to award this work order to vendor? This will close other bids.`)) return;
 
         try {
-            const res = await fetch(`${API_URL}/api/communities/work-orders/${selectedWO.id}/award/${bid.id}`, {
+            const res = await fetchWithAuth(`${API_URL}/api/communities/work-orders/${selectedWO.id}/award/${bid.id}`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
+                    'Content-Type': 'application/json'
                 }
             });
 
@@ -149,9 +144,7 @@ export default function BoardWorkOrders() {
     const viewDetails = async (wo) => {
         // Fetch bids for this WO
         try {
-            const res = await fetch(`${API_URL}/api/communities/work-orders/${wo.id}/bids`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` }
-            });
+            const res = await fetchWithAuth(`${API_URL}/api/communities/work-orders/${wo.id}/bids`);
             if (res.ok) {
                 const bids = await res.json();
                 setSelectedWO({ ...wo, bids });

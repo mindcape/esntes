@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
 export default function VendorDashboard() {
+    const { fetchWithAuth } = useAuth();
     const [workOrders, setWorkOrders] = useState([]);
     const [invoices, setInvoices] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -27,8 +29,6 @@ export default function VendorDashboard() {
     const fetchData = async (vendorId) => {
         setLoading(true);
         try {
-            const headers = { 'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}` };
-
             // Fetch All Work Orders (filter client side or backend? Backend is cleaner but let's see)
             // Ideally we need endpoint to get "My Work Orders" or filter by assigned_vendor_id
             // reusing /api/communities/work-orders and filtering client side for now, 
@@ -39,14 +39,14 @@ export default function VendorDashboard() {
             // We should filter client side for MVP or ask backend to filter.
             // Let's filter client side.
 
-            const resWO = await fetch(`${API_URL}/api/communities/work-orders`, { headers });
+            const resWO = await fetchWithAuth(`${API_URL}/api/communities/work-orders`);
             if (resWO.ok) {
                 const data = await resWO.json();
                 setWorkOrders(data.filter(wo => wo.assigned_vendor_id === vendorId));
             }
 
             // Fetch Invoices
-            const resInv = await fetch(`${API_URL}/api/communities/invoices`, { headers });
+            const resInv = await fetchWithAuth(`${API_URL}/api/communities/invoices`);
             if (resInv.ok) {
                 const data = await resInv.json();
                 setInvoices(data);
@@ -70,11 +70,10 @@ export default function VendorDashboard() {
                 amount: parseFloat(invoiceData.amount)
             };
 
-            const res = await fetch(`${API_URL}/api/communities/invoices`, {
+            const res = await fetchWithAuth(`${API_URL}/api/communities/invoices`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('nibrr_token')}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(payload)
             });

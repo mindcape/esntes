@@ -31,9 +31,13 @@ class Settings:
 
     # S3 Storage
     S3_BUCKET_NAME: str = os.getenv("S3_BUCKET_NAME", "nibrr-local")
-    AWS_ACCESS_KEY_ID: str = os.getenv("AWS_ACCESS_KEY_ID", "minioadmin")
-    AWS_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
+    AWS_ACCESS_KEY_ID: str = os.getenv("AWS_ACCESS_KEY_ID", None)
+    AWS_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY", None)
     AWS_REGION: str = os.getenv("AWS_REGION", "us-east-1")
     S3_ENDPOINT_URL: str = os.getenv("S3_ENDPOINT_URL") # Optional, for MinIO
+
+    # Storage Configuration
+    STORAGE_TYPE: str = os.getenv("STORAGE_TYPE", "local") # 'local' or 's3'
+    LOCAL_STORAGE_PATH: str = os.getenv("LOCAL_STORAGE_PATH", "uploads")
 
 settings = Settings()

@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
 export default function ARCRequests() {
-    const { user } = useAuth();
+    const { user, fetchWithAuth } = useAuth();
     // ... (imports)
     const [requests, setRequests] = useState([]);
     const [showModal, setShowModal] = useState(false);
@@ -38,32 +38,24 @@ export default function ARCRequests() {
         }
     }, [error, success]);
 
-    const fetchRequests = () => {
+    const fetchRequests = async () => {
         if (!user?.community_id) return;
-        const token = localStorage.getItem('nibrr_token');
-        fetch(`${API_URL}/api/communities/${user.community_id}/arc/my`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        })
-            .then(res => {
-                if (!res.ok) throw new Error('Failed to fetch requests');
-                return res.json();
-            })
-            .then(data => {
-                if (Array.isArray(data)) {
-                    setRequests(data);
-                } else {
-                    setRequests([]);
-                }
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error(err);
-                setError("Failed to load ARC requests.");
-                setLoading(false);
+        try {
+            const res = await fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/arc/my`);
+            if (!res.ok) throw new Error('Failed to fetch requests');
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                setRequests(data);
+            } else {
                 setRequests([]);
-            });
+            }
+        } catch (err) {
+            console.error(err);
+            setError("Failed to load ARC requests.");
+            setRequests([]);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleOpenModal = () => {
@@ -97,12 +89,10 @@ export default function ARCRequests() {
         }
 
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/communities/${user.community_id}/arc`, {
+            const res = await fetchWithAuth(`${API_URL}/api/communities/${user.community_id}/arc`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     resident_id: 0, // Placeholder, backend uses token

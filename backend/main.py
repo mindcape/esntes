@@ -98,6 +98,19 @@ async def health_check():
 async def root():
     return {"message": "Welcome to Nibrr HOA Management API"}
 
+# File Uploads
+from backend.core.upload import router as upload_router
+app.include_router(upload_router, prefix="/api", tags=["upload"])
+
+# Static Files for Local Storage
+from fastapi.staticfiles import StaticFiles
+from backend.core.config import settings
+import os
+
+if settings.STORAGE_TYPE == "local":
+    os.makedirs(settings.LOCAL_STORAGE_PATH, exist_ok=True)
+    app.mount("/static", StaticFiles(directory=settings.LOCAL_STORAGE_PATH), name="static")
+
 # Startup Events
 from backend.communication.scheduler import init_scheduler
 

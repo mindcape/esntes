@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { API_URL } from '../../config';
 import {
     Calendar as CalendarIcon,
@@ -14,6 +15,7 @@ import {
 
 const CampaignWizard = () => {
     const navigate = useNavigate();
+    const { fetchWithAuth } = useAuth();
     const [templates, setTemplates] = useState([]);
     const [selectedTemplate, setSelectedTemplate] = useState(null);
     const [audience, setAudience] = useState({ role: 'resident' }); // Default
@@ -27,11 +29,8 @@ const CampaignWizard = () => {
     }, []);
 
     const fetchTemplates = async () => {
-        const token = localStorage.getItem('nibrr_token');
         try {
-            const res = await fetch(`${API_URL}/api/communication/templates`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await fetchWithAuth(`${API_URL}/api/communication/templates`);
             if (res.ok) {
                 const data = await res.json();
                 setTemplates(data);
@@ -49,7 +48,6 @@ const CampaignWizard = () => {
 
         setLoading(true);
         try {
-            const token = localStorage.getItem('nibrr_token');
             const payload = {
                 title: campaignTitle,
                 template_id: selectedTemplate.id,
@@ -57,11 +55,10 @@ const CampaignWizard = () => {
                 scheduled_at: schedule.isImmediate ? null : schedule.date
             };
 
-            const res = await fetch(`${API_URL}/api/communication/campaigns`, {
+            const res = await fetchWithAuth(`${API_URL}/api/communication/campaigns`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(payload)
             });

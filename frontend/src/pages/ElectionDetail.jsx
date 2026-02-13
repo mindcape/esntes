@@ -8,7 +8,7 @@ import { API_URL } from '../config';
 export default function ElectionDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, fetchWithAuth } = useAuth();
 
     const [election, setElection] = useState(null);
     const [results, setResults] = useState(null);
@@ -33,37 +33,48 @@ export default function ElectionDetail() {
 
     useEffect(() => {
         // Fetch all elections to find this one
-        fetch(`${API_URL}/api/voting/`)
-            .then(res => res.json())
-            .then(data => {
-                const found = data.find(e => e.id === parseInt(id));
-                if (found) {
-                    setElection(found);
-                    if (found.has_voted) {
-                        fetchResults();
+        const fetchElection = async () => {
+            try {
+                const res = await fetchWithAuth(`${API_URL}/api/voting/`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const found = data.find(e => e.id === parseInt(id));
+                    if (found) {
+                        setElection(found);
+                        if (found.has_voted) {
+                            fetchResults();
+                        }
+                    } else {
+                        setErrored(true);
+                        setError("Election not found or Access Denied.");
                     }
                 } else {
-                    setErrored(true);
-                    setError("Election not found or Access Denied.");
+                    throw new Error("Failed to fetch elections");
                 }
-                setLoading(false);
-            })
-            .catch(err => {
+            } catch (err) {
                 console.error(err);
                 setErrored(true);
                 setError("Failed to load election details.");
+            } finally {
                 setLoading(false);
-            });
+            }
+        };
+        fetchElection();
     }, [id]);
 
-    const fetchResults = () => {
-        fetch(`${API_URL}/api/voting/${id}/results`)
-            .then(res => res.json())
-            .then(data => setResults(data))
-            .catch(err => {
-                console.error(err);
+    const fetchResults = async () => {
+        try {
+            const res = await fetchWithAuth(`${API_URL}/api/voting/${id}/results`);
+            if (res.ok) {
+                const data = await res.json();
+                setResults(data);
+            } else {
                 setError("Failed to load results.");
-            });
+            }
+        } catch (err) {
+            console.error(err);
+            setError("Failed to load results.");
+        }
     };
 
     const toggleCandidate = (candidateId) => {
@@ -95,7 +106,7 @@ export default function ElectionDetail() {
         setSuccess(null);
 
         try {
-            const res = await fetch(`${API_URL}/api/voting/vote`, {
+            const res = await fetchWithAuth(`${API_URL}/api/voting/vote`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -126,7 +137,7 @@ export default function ElectionDetail() {
         setSuccess(null);
 
         try {
-            const res = await fetch(`${API_URL}/api/voting/${id}/end`, {
+            const res = await fetchWithAuth(`${API_URL}/api/voting/${id}/end`, {
                 method: 'POST'
             });
 

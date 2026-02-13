@@ -143,8 +143,46 @@ export const AuthProvider = ({ children }) => {
         return user.permissions.includes(permissionName);
     };
 
+    const fetchWithAuth = async (url, options = {}) => {
+        const storedToken = localStorage.getItem('nibrr_token');
+
+        const headers = {
+            'Content-Type': 'application/json',
+            ...options.headers,
+        };
+
+        if (options.body instanceof FormData) {
+            delete headers['Content-Type'];
+        }
+
+        if (storedToken) {
+            headers['Authorization'] = `Bearer ${storedToken}`;
+        }
+
+        try {
+            const response = await fetch(url, {
+                ...options,
+                headers,
+            });
+
+            if (response.status === 401) {
+                // Token verification failed or expired
+                // Only logout if not already on login page to avoid loops if login check fails
+                if (!window.location.pathname.includes('/login')) {
+                    logout();
+                    window.location.href = '/login';
+                }
+                throw new Error('Session expired. Please login again.');
+            }
+
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, login, logout, setupAccount, verifyMfa, loading, error, hasPermission }}>
+        <AuthContext.Provider value={{ user, login, logout, setupAccount, verifyMfa, fetchWithAuth, loading, error, hasPermission }}>
             {children}
         </AuthContext.Provider>
     );

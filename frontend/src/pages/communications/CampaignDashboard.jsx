@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../../config';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import {
     Plus,
     RefreshCw,
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react';
 
 const CampaignDashboard = () => {
+    const { fetchWithAuth } = useAuth();
     const [activeTab, setActiveTab] = useState('campaigns');
     const [campaigns, setCampaigns] = useState([]);
     const [failedEmails, setFailedEmails] = useState([]);
@@ -37,10 +39,7 @@ const CampaignDashboard = () => {
     // Fetch Campaigns
     const fetchCampaigns = async () => {
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/communication/campaigns`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await fetchWithAuth(`${API_URL}/api/communication/campaigns`);
             if (!res.ok) throw new Error("Failed to fetch campaigns");
             const data = await res.json();
             setCampaigns(data);
@@ -52,10 +51,7 @@ const CampaignDashboard = () => {
     // Fetch Failed Emails
     const fetchFailedEmails = async () => {
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/communication/emails/failed`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await fetchWithAuth(`${API_URL}/api/communication/emails/failed`);
             if (!res.ok) throw new Error("Failed to fetch failed emails");
             const data = await res.json();
             setFailedEmails(data);
@@ -67,10 +63,7 @@ const CampaignDashboard = () => {
     // Fetch Templates
     const fetchTemplates = async () => {
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/communication/templates`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await fetchWithAuth(`${API_URL}/api/communication/templates`);
             if (!res.ok) throw new Error("Failed to fetch templates");
             const data = await res.json();
             setTemplates(data);
@@ -87,10 +80,8 @@ const CampaignDashboard = () => {
 
     const handleRetryEmail = async (emailId) => {
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/communication/emails/${emailId}/retry`, {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${token}` }
+            const res = await fetchWithAuth(`${API_URL}/api/communication/emails/${emailId}/retry`, {
+                method: 'POST'
             });
             if (!res.ok) throw new Error("Retry failed");
             fetchFailedEmails();
@@ -101,10 +92,8 @@ const CampaignDashboard = () => {
 
     const handleRetryCampaign = async (campaignId) => {
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/communication/campaigns/${campaignId}/retry`, {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${token}` }
+            const res = await fetchWithAuth(`${API_URL}/api/communication/campaigns/${campaignId}/retry`, {
+                method: 'POST'
             });
             if (!res.ok) throw new Error("Retry failed");
             fetchFailedEmails();
@@ -134,10 +123,8 @@ const CampaignDashboard = () => {
     const handleDeleteTemplate = async (id) => {
         if (!window.confirm("Are you sure you want to delete this template?")) return;
         try {
-            const token = localStorage.getItem('nibrr_token');
-            const res = await fetch(`${API_URL}/api/communication/templates/${id}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` }
+            const res = await fetchWithAuth(`${API_URL}/api/communication/templates/${id}`, {
+                method: 'DELETE'
             });
             if (res.ok) {
                 fetchTemplates();
@@ -157,19 +144,14 @@ const CampaignDashboard = () => {
         }
 
         try {
-            const token = localStorage.getItem('nibrr_token');
             const url = editingTemplate
                 ? `${API_URL}/api/communication/templates/${editingTemplate.id}`
                 : `${API_URL}/api/communication/templates`;
 
             const method = editingTemplate ? 'PUT' : 'POST';
 
-            const res = await fetch(url, {
+            const res = await fetchWithAuth(url, {
                 method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
                 body: JSON.stringify(templateForm)
             });
 
