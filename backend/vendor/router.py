@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import date
+from datetime import date, datetime
 from pydantic import BaseModel, validator
 from backend.core.database import get_db
 from backend.auth.dependencies import get_current_user
@@ -45,7 +45,7 @@ class VendorUpdate(VendorBase):
 class VendorOut(VendorBase):
     id: int
     community_id: int
-    created_at: Optional[date] = None
+    created_at: Optional[datetime] = None
     
     class Config:
         orm_mode = True
@@ -58,7 +58,7 @@ class DocumentCreate(BaseModel):
 
 class DocumentOut(DocumentCreate):
     id: int
-    upload_date: Optional[date] = None
+    upload_date: Optional[datetime] = None
     
     class Config:
         orm_mode = True
@@ -74,7 +74,7 @@ def get_vendors(
 ):
     # Board can see all vendors. Residents? Maybe not.
     # Assuming Board/Admin only for now.
-    if current_user.role.name not in ["admin", "board", "super_admin"]:
+    if current_user.role.name not in ["admin", "board", "super_admin", "president", "vice_president", "treasurer"]:
         raise HTTPException(status_code=403, detail="Not authorized")
         
     return db.query(Vendor).filter(Vendor.community_id == current_user.community_id).all()
@@ -85,7 +85,7 @@ def create_vendor(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role.name not in ["admin", "board", "super_admin"]:
+    if current_user.role.name not in ["admin", "board", "super_admin", "president", "vice_president", "treasurer"]:
         raise HTTPException(status_code=403, detail="Not authorized")
         
     new_vendor = Vendor(**vendor.dict(), community_id=current_user.community_id)
@@ -100,7 +100,7 @@ def get_vendor(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role.name not in ["admin", "board", "super_admin"]:
+    if current_user.role.name not in ["admin", "board", "super_admin", "president", "vice_president", "treasurer"]:
          raise HTTPException(status_code=403, detail="Not authorized")
 
     vendor = db.query(Vendor).filter(Vendor.id == vendor_id, Vendor.community_id == current_user.community_id).first()
@@ -115,7 +115,7 @@ def update_vendor(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role.name not in ["admin", "board", "super_admin"]:
+    if current_user.role.name not in ["admin", "board", "super_admin", "president", "vice_president", "treasurer"]:
          raise HTTPException(status_code=403, detail="Not authorized")
          
     vendor = db.query(Vendor).filter(Vendor.id == vendor_id, Vendor.community_id == current_user.community_id).first()
@@ -135,7 +135,7 @@ def delete_vendor(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role.name not in ["admin", "board", "super_admin"]:
+    if current_user.role.name not in ["admin", "board", "super_admin", "president", "vice_president", "treasurer"]:
          raise HTTPException(status_code=403, detail="Not authorized")
 
     vendor = db.query(Vendor).filter(Vendor.id == vendor_id, Vendor.community_id == current_user.community_id).first()
@@ -155,7 +155,7 @@ def add_document(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role.name not in ["admin", "board", "super_admin"]:
+    if current_user.role.name not in ["admin", "board", "super_admin", "president", "vice_president", "treasurer"]:
          raise HTTPException(status_code=403, detail="Not authorized")
     
     vendor = db.query(Vendor).filter(Vendor.id == vendor_id, Vendor.community_id == current_user.community_id).first()
@@ -174,7 +174,7 @@ def get_documents(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role.name not in ["admin", "board", "super_admin"]:
+    if current_user.role.name not in ["admin", "board", "super_admin", "president", "vice_president", "treasurer"]:
          raise HTTPException(status_code=403, detail="Not authorized")
          
     vendor = db.query(Vendor).filter(Vendor.id == vendor_id, Vendor.community_id == current_user.community_id).first()

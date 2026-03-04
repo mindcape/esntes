@@ -9,12 +9,13 @@ class CampaignService:
     def __init__(self, db: Session):
         self.db = db
 
-    def create_campaign(self, title: str, template_id: int, audience_filter: dict, scheduled_at: datetime, community_id: int, user_id: int):
+    def create_campaign(self, title: str, template_id: int, audience_filter: dict, scheduled_at: datetime, community_id: int, user_id: int, attachments: list = None):
         """Create a new campaign and queue emails if ready"""
         campaign = Campaign(
             title=title,
             template_id=template_id,
             audience_filter=audience_filter,
+            attachments=attachments or [],
             scheduled_at=scheduled_at,
             community_id=community_id,
             created_by_id=user_id,
@@ -72,6 +73,7 @@ class CampaignService:
                 recipient_email=user.email,
                 subject=subject,
                 body=body,
+                attachments=campaign.attachments,
                 status="PENDING" 
             )
             self.db.add(queue_item)

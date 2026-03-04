@@ -14,12 +14,16 @@ import {
     Mail,
     ChevronRight,
     Search,
-    Layout,
     Trash2,
     Edit,
     X,
-    Check
+    Check,
+    Zap,
+    Layout
 } from 'lucide-react';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import './Campaign.css';
 
 const CampaignDashboard = () => {
     const { fetchWithAuth } = useAuth();
@@ -33,7 +37,7 @@ const CampaignDashboard = () => {
     // Template Modal State
     const [showTemplateModal, setShowTemplateModal] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState(null);
-    const [templateForm, setTemplateForm] = useState({ name: '', subject_template: '', content_html: '' });
+    const [templateForm, setTemplateForm] = useState({ name: '', subject_template: '', content_html: '', category: 'General' });
 
 
     // Fetch Campaigns
@@ -109,14 +113,15 @@ const CampaignDashboard = () => {
         setTemplateForm({
             name: template.name,
             subject_template: template.subject_template,
-            content_html: template.content_html
+            content_html: template.content_html,
+            category: template.category || 'General'
         });
         setShowTemplateModal(true);
     };
 
     const handleNewTemplate = () => {
         setEditingTemplate(null);
-        setTemplateForm({ name: '', subject_template: '', content_html: '' });
+        setTemplateForm({ name: '', subject_template: '', content_html: '', category: 'General' });
         setShowTemplateModal(true);
     };
 
@@ -129,7 +134,8 @@ const CampaignDashboard = () => {
             if (res.ok) {
                 fetchTemplates();
             } else {
-                alert("Failed to delete template");
+                const err = await res.json();
+                alert(`Failed to delete template: ${err.detail || 'Unknown error'}`);
             }
         } catch (e) {
             console.error(e);
@@ -169,57 +175,48 @@ const CampaignDashboard = () => {
     };
 
     if (loading) return (
-        <div className="flex items-center justify-center min-h-[400px]">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="container" style={{ display: "flex", justifyContent: "center", padding: "4rem" }}>
+            <h3>Loading...</h3>
         </div>
     );
 
     return (
-        <div className="container mx-auto px-6 py-8">
-            <div className="flex justify-between items-center mb-8">
+        <div className="container">
+            <div className="header" style={{ alignItems: "flex-start", marginBottom: "2rem" }}>
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Communications</h1>
-                    <p className="text-gray-500 mt-1">Manage email campaigns and newsletters</p>
+                    <h1 style={{ margin: 0 }}>Communications</h1>
+                    <p style={{ color: "#6b7280", margin: "0.5rem 0 0 0" }}>Manage email campaigns and newsletters</p>
                 </div>
                 {activeTab === 'templates' ? (
                     <button
                         onClick={handleNewTemplate}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm"
+                        className="btn btn-primary" style={{ gap: "0.5rem" }}
                     >
                         <Plus size={20} />
                         New Template
                     </button>
                 ) : (
-                    <Link to="/communications/new" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm">
+                    <Link to="/communications/new" className="btn btn-primary" style={{ gap: "0.5rem" }}>
                         <Plus size={20} />
                         New Campaign
                     </Link>
                 )}
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="card" style={{ padding: 0, overflow: "hidden" }}>
                 {/* Tabs */}
-                <div className="flex border-b border-gray-200">
-                    <button
-                        className={`flex items-center gap-2 px-6 py-4 font-medium text-sm transition-colors relative ${activeTab === 'campaigns' ? 'text-blue-600 bg-blue-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
-                        onClick={() => setActiveTab('campaigns')}
-                    >
+                <div className="campaign-tabs">
+                    <button className={`campaign-tab ${activeTab === 'campaigns' ? 'active' : ''}`} onClick={() => setActiveTab('campaigns')}>
                         <FileText size={18} />
                         Campaigns
-                        {activeTab === 'campaigns' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>}
+
                     </button>
-                    <button
-                        className={`flex items-center gap-2 px-6 py-4 font-medium text-sm transition-colors relative ${activeTab === 'templates' ? 'text-blue-600 bg-blue-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
-                        onClick={() => setActiveTab('templates')}
-                    >
+                    <button className={`campaign-tab ${activeTab === 'templates' ? 'active' : ''}`} onClick={() => setActiveTab('templates')}>
                         <Layout size={18} />
                         Templates
-                        {activeTab === 'templates' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>}
+
                     </button>
-                    <button
-                        className={`flex items-center gap-2 px-6 py-4 font-medium text-sm transition-colors relative ${activeTab === 'failed' ? 'text-red-600 bg-red-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
-                        onClick={() => setActiveTab('failed')}
-                    >
+                    <button className={`campaign-tab ${activeTab === 'failed' ? 'active' : ''}`} onClick={() => setActiveTab('failed')}>
                         <AlertCircle size={18} />
                         Failed Deliveries
                         {failedEmails.length > 0 && (
@@ -227,48 +224,72 @@ const CampaignDashboard = () => {
                                 {failedEmails.length}
                             </span>
                         )}
-                        {activeTab === 'failed' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"></div>}
-                    </button>
-                </div>
 
-                <div className="p-6">
+                    </button>
+                </div >
+
+                <div style={{ padding: "1.5rem" }}>
                     {/* Campaigns Tab */}
                     {activeTab === 'campaigns' && (
                         <div>
-                            {campaigns.length === 0 ? (
-                                <div className="text-center py-12">
-                                    <div className="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <Send className="text-blue-600" size={32} />
+                            {/* Quick Actions (Only show if templates are loaded) */}
+                            {templates.length > 0 && (
+                                <div className="mb-8">
+                                    <h3 style={{ fontSize: "0.875rem", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 1rem 0", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                        <Zap size={16} className="text-amber-500" />
+                                        Quick Actions
+                                    </h3>
+                                    <div className="quick-actions">
+                                        {[
+                                            { title: "Send Newsletter", cat: "Newsletter", color: "bg-blue-50 text-blue-700 hover:bg-blue-100" },
+                                            { title: "Urgent Alert", cat: "Alerts", color: "bg-red-50 text-red-700 hover:bg-red-100" },
+                                            { title: "Meeting Notice", cat: "Meetings", color: "bg-purple-50 text-purple-700 hover:bg-purple-100" },
+                                            { title: "Financial Update", cat: "Financial", color: "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" },
+                                        ].map(action => (
+                                            <Link
+                                                key={action.title}
+                                                to={`/communications/new?category=${action.cat}`}
+                                                className="action-card"
+                                            >
+                                                {action.title}
+                                            </Link>
+                                        ))}
                                     </div>
-                                    <h3 className="text-lg font-medium text-gray-900">No campaigns yet</h3>
-                                    <p className="text-gray-500 mt-1 mb-6">Create your first mass email campaign to reach all residents.</p>
-                                    <Link to="/communications/new" className="text-blue-600 font-medium hover:underline">
+                                </div>
+                            )}
+
+                            {campaigns.length === 0 ? (
+                                <div style={{ textAlign: "center", padding: "3rem" }}>
+                                    <Send className="text-blue-600" size={32} />
+                                    <h3 style={{ margin: "1rem 0 0.5rem 0" }}>No campaigns yet</h3>
+                                    <p style={{ color: "#6b7280", margin: "0 0 1.5rem 0" }}>Create your first mass email campaign to reach all residents.</p>
+                                    <Link to="/communications/new" style={{ color: "hsl(var(--primary))", fontWeight: 500 }}>
                                         Start a Campaign &rarr;
                                     </Link>
                                 </div>
                             ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left border-collapse">
+                                <div style={{ overflowX: "auto" }}>
+                                    <table className="campaign-table">
                                         <thead>
                                             <tr className="border-b border-gray-200">
-                                                <th className="py-3 px-4 text-sm font-semibold text-gray-600">Campaign</th>
-                                                <th className="py-3 px-4 text-sm font-semibold text-gray-600">Status</th>
-                                                <th className="py-3 px-4 text-sm font-semibold text-gray-600">Schedule</th>
-                                                <th className="py-3 px-4 text-sm font-semibold text-gray-600">Performance</th>
-                                                <th className="py-3 px-4 text-sm font-semibold text-gray-600 text-right">Actions</th>
+                                                <th>Campaign</th>
+                                                <th>Status</th>
+                                                <th>Schedule</th>
+                                                <th>Performance</th>
+                                                <th>Actions</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-100">
+                                        <tbody >
                                             {campaigns.map(c => (
-                                                <tr key={c.id} className="hover:bg-gray-50 transition-colors group">
-                                                    <td className="py-4 px-4">
-                                                        <div className="font-medium text-gray-900">{c.title}</div>
-                                                        <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                                                <tr key={c.id} >
+                                                    <td>
+                                                        <strong style={{ display: "block", color: "#111827" }}>{c.title}</strong>
+                                                        <div style={{ fontSize: "0.75rem", color: "#6b7280", display: "flex", alignItems: "center", gap: "0.25rem", marginTop: "0.25rem" }}>
                                                             <Mail size={12} />
                                                             ID: #{c.id}
                                                         </div>
                                                     </td>
-                                                    <td className="py-4 px-4">
+                                                    <td>
                                                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${c.status === 'COMPLETED' ? 'bg-green-50 text-green-700 border-green-200' :
                                                             c.status === 'FAILED' ? 'bg-red-50 text-red-700 border-red-200' :
                                                                 'bg-amber-50 text-amber-700 border-amber-200'
@@ -279,30 +300,30 @@ const CampaignDashboard = () => {
                                                             {c.status}
                                                         </span>
                                                     </td>
-                                                    <td className="py-4 px-4 text-sm text-gray-600">
+                                                    <td>
                                                         {c.scheduled_at ? new Date(c.scheduled_at).toLocaleString(undefined, {
                                                             dateStyle: 'medium',
                                                             timeStyle: 'short'
                                                         }) : 'Immediate'}
                                                     </td>
-                                                    <td className="py-4 px-4">
-                                                        <div className="flex items-center gap-4 text-sm">
-                                                            <div className="flex flex-col">
-                                                                <span className="text-gray-500 text-xs uppercase tracking-wide">Sent</span>
-                                                                <span className="font-medium text-gray-900">{c.sent_count}</span>
+                                                    <td>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                                                            <div style={{ display: "flex", flexDirection: "column" }}>
+                                                                <span style={{ color: "#6b7280", fontSize: "0.75rem", textTransform: "uppercase" }}>Sent</span>
+                                                                <strong style={{ color: "#111827" }}>{c.sent_count}</strong>
                                                             </div>
-                                                            <div className="h-8 w-px bg-gray-200"></div>
-                                                            <div className="flex flex-col">
-                                                                <span className="text-gray-500 text-xs uppercase tracking-wide">Failed</span>
-                                                                <span className={`font-medium ${c.failed_count > 0 ? 'text-red-600' : 'text-gray-900'}`}>{c.failed_count}</span>
+                                                            <div style={{ height: "2rem", width: "1px", backgroundColor: "#e5e7eb" }}></div>
+                                                            <div style={{ display: "flex", flexDirection: "column" }}>
+                                                                <span style={{ color: "#6b7280", fontSize: "0.75rem", textTransform: "uppercase" }}>Failed</span>
+                                                                <strong style={{ color: c.failed_count > 0 ? "#dc2626" : "#111827" }}>{c.failed_count}</strong>
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td className="py-4 px-4 text-right">
+                                                    <td>
                                                         {c.failed_count > 0 && (
                                                             <button
                                                                 onClick={() => handleRetryCampaign(c.id)}
-                                                                className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1 justify-end ml-auto"
+                                                                style={{ color: "hsl(var(--primary))", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.25rem", marginLeft: "auto" }}
                                                             >
                                                                 <RefreshCw size={14} />
                                                                 Retry Failed
@@ -322,54 +343,63 @@ const CampaignDashboard = () => {
                     {activeTab === 'templates' && (
                         <div>
                             {templates.length === 0 ? (
-                                <div className="text-center py-12">
-                                    <div className="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <Layout className="text-blue-600" size={32} />
-                                    </div>
-                                    <h3 className="text-lg font-medium text-gray-900">No templates yet</h3>
-                                    <p className="text-gray-500 mt-1 mb-6">Create email templates to reuse in your campaigns.</p>
+                                <div style={{ textAlign: "center", padding: "3rem" }}>
+                                    <Layout className="text-blue-600" size={32} />
+                                    <h3 style={{ margin: "1rem 0 0.5rem 0" }}>No templates yet</h3>
+                                    <p style={{ color: "#6b7280", margin: "0 0 1.5rem 0" }}>Create email templates to reuse in your campaigns.</p>
                                     <button
                                         onClick={handleNewTemplate}
-                                        className="text-blue-600 font-medium hover:underline"
+                                        style={{ color: "hsl(var(--primary))", fontWeight: 500 }}
                                     >
                                         Create First Template &rarr;
                                     </button>
                                 </div>
                             ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left border-collapse">
+                                <div style={{ overflowX: "auto" }}>
+                                    <table className="campaign-table">
                                         <thead>
                                             <tr className="border-b border-gray-200">
-                                                <th className="py-3 px-4 text-sm font-semibold text-gray-600">Template Name</th>
-                                                <th className="py-3 px-4 text-sm font-semibold text-gray-600">Subject Line</th>
-                                                <th className="py-3 px-4 text-sm font-semibold text-gray-600 text-right">Actions</th>
+                                                <th>Template Name</th>
+                                                <th>Category</th>
+                                                <th>Subject Line</th>
+                                                <th>Actions</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-100">
+                                        <tbody >
                                             {templates.map(t => (
-                                                <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                                                    <td className="py-4 px-4 font-medium text-gray-900">
+                                                <tr key={t.id} >
+                                                    <td>
                                                         {t.name}
+                                                        {t.is_system && (
+                                                            <span style={{ marginLeft: "0.5rem", background: "#f3f4f6", color: "#4b5563", fontSize: "0.65rem", padding: "0.1rem 0.5rem", borderRadius: "1rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>System</span>
+                                                        )}
                                                     </td>
-                                                    <td className="py-4 px-4 text-gray-600">
+                                                    <td>
+                                                        <span style={{ background: "#eff6ff", color: "#1d4ed8", fontSize: "0.75rem", padding: "0.25rem 0.5rem", borderRadius: "1rem", border: "1px solid #dbeafe" }}>
+                                                            {t.category || 'General'}
+                                                        </span>
+                                                    </td>
+                                                    <td>
                                                         {t.subject_template}
                                                     </td>
-                                                    <td className="py-4 px-4 text-right">
-                                                        <div className="flex items-center justify-end gap-2">
+                                                    <td>
+                                                        <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
                                                             <button
                                                                 onClick={() => handleEditTemplate(t)}
-                                                                className="p-1.5 hover:bg-gray-200 rounded text-gray-600 hover:text-blue-600 transition-colors"
-                                                                title="Edit"
+                                                                style={{ padding: "0.4rem", cursor: "pointer", border: "none", background: "none", color: "#4b5563" }}
+                                                                title={t.is_system ? "View" : "Edit"}
                                                             >
                                                                 <Edit size={16} />
                                                             </button>
-                                                            <button
-                                                                onClick={() => handleDeleteTemplate(t.id)}
-                                                                className="p-1.5 hover:bg-red-100 rounded text-gray-600 hover:text-red-600 transition-colors"
-                                                                title="Delete"
-                                                            >
-                                                                <Trash2 size={16} />
-                                                            </button>
+                                                            {!t.is_system && (
+                                                                <button
+                                                                    onClick={() => handleDeleteTemplate(t.id)}
+                                                                    style={{ padding: "0.4rem", cursor: "pointer", border: "none", background: "none", color: "#dc2626" }}
+                                                                    title="Delete"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -387,36 +417,36 @@ const CampaignDashboard = () => {
                             {failedEmails.length === 0 ? (
                                 <div className="text-center py-12 text-gray-500">
                                     <CheckCircle2 size={48} className="mx-auto text-green-500 mb-3 opacity-50" />
-                                    <h3 className="text-lg font-medium text-gray-900">All systems operational</h3>
+                                    <h3 style={{ margin: "1rem 0 0.5rem 0" }}>All systems operational</h3>
                                     <p>No failed email deliveries found.</p>
                                 </div>
                             ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left border-collapse">
+                                <div style={{ overflowX: "auto" }}>
+                                    <table className="campaign-table">
                                         <thead>
                                             <tr className="border-b border-gray-200 bg-gray-50/50">
-                                                <th className="py-3 px-4 text-xs uppercase tracking-wider font-semibold text-gray-500">Recipient</th>
-                                                <th className="py-3 px-4 text-xs uppercase tracking-wider font-semibold text-gray-500">Subject</th>
-                                                <th className="py-3 px-4 text-xs uppercase tracking-wider font-semibold text-gray-500">Error Details</th>
-                                                <th className="py-3 px-4 text-xs uppercase tracking-wider font-semibold text-gray-500">Attempts</th>
-                                                <th className="py-3 px-4 text-xs uppercase tracking-wider font-semibold text-gray-500 text-right">Actions</th>
+                                                <th>Recipient</th>
+                                                <th>Subject</th>
+                                                <th>Error Details</th>
+                                                <th>Attempts</th>
+                                                <th>Actions</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-100">
+                                        <tbody >
                                             {failedEmails.map(email => (
-                                                <tr key={email.id} className="hover:bg-red-50/10 transition-colors">
-                                                    <td className="py-3 px-4 font-medium text-gray-900">{email.recipient_email}</td>
-                                                    <td className="py-3 px-4 text-sm text-gray-600">{email.subject}</td>
-                                                    <td className="py-3 px-4">
+                                                <tr key={email.id} >
+                                                    <td>{email.recipient_email}</td>
+                                                    <td>{email.subject}</td>
+                                                    <td>
                                                         <span className="inline-block bg-red-50 text-red-700 text-xs px-2 py-1 rounded border border-red-100 max-w-xs truncate" title={email.last_error}>
                                                             {email.last_error || 'Unknown Error'}
                                                         </span>
                                                     </td>
-                                                    <td className="py-3 px-4 text-sm text-gray-600">{email.attempts}</td>
-                                                    <td className="py-3 px-4 text-right">
+                                                    <td>{email.attempts}</td>
+                                                    <td>
                                                         <button
                                                             onClick={() => handleRetryEmail(email.id)}
-                                                            className="text-blue-600 hover:text-blue-800 text-sm font-medium inline-flex items-center gap-1"
+                                                            style={{ color: "hsl(var(--primary))", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.25rem" }}
                                                         >
                                                             <RefreshCw size={14} />
                                                             Retry
@@ -435,76 +465,101 @@ const CampaignDashboard = () => {
 
             {/* Template Modal */}
             {showTemplateModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl relative animate-in fade-in zoom-in duration-200">
-                        <button
-                            onClick={() => setShowTemplateModal(false)}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-                        >
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ position: "relative" }}>
+                        <button onClick={() => setShowTemplateModal(false)} style={{ position: "absolute", top: "1rem", right: "1rem", background: "none", border: "none", cursor: "pointer", color: "#9ca3af" }}>
                             <X size={24} />
                         </button>
 
-                        <div className="p-6 border-b border-gray-100">
-                            <h2 className="text-xl font-bold text-gray-900">
+                        <div className="modal-header">
+                            <h2 style={{ margin: 0 }}>
                                 {editingTemplate ? 'Edit Template' : 'Create New Template'}
                             </h2>
                         </div>
 
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">Template Name</label>
-                                <input
-                                    type="text"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                    placeholder="e.g. Monthly Newsletter Layout"
-                                    value={templateForm.name}
-                                    onChange={e => setTemplateForm({ ...templateForm, name: e.target.value })}
-                                />
+                        <div className="modal-body space-y-4">
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                                <div>
+                                    <label className="form-label">Template Name</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="e.g. Monthly Newsletter Layout"
+                                        value={templateForm.name}
+                                        disabled={editingTemplate?.is_system}
+                                        onChange={e => setTemplateForm({ ...templateForm, name: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="form-label">Category</label>
+                                    <select
+                                        className="form-select"
+                                        value={templateForm.category}
+                                        disabled={editingTemplate?.is_system}
+                                        onChange={e => setTemplateForm({ ...templateForm, category: e.target.value })}
+                                    >
+                                        <option value="General">General</option>
+                                        <option value="Newsletter">Newsletter</option>
+                                        <option value="Alerts">Alerts</option>
+                                        <option value="Meetings">Meetings</option>
+                                        <option value="Financial">Financial</option>
+                                        <option value="Maintenance">Maintenance</option>
+                                    </select>
+                                </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">Email Subject</label>
+                                <label className="form-label">Email Subject</label>
                                 <input
                                     type="text"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    className="form-input"
                                     placeholder="Enter subject line (supports {{first_name}})"
                                     value={templateForm.subject_template}
+                                    disabled={editingTemplate?.is_system}
                                     onChange={e => setTemplateForm({ ...templateForm, subject_template: e.target.value })}
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Tip: Use <code>{'{{first_name}}'}</code> to insert the recipient's name.</p>
+                                <p style={{ fontSize: "0.75rem", color: "#6b7280", margin: "0.25rem 0 0 0" }}>Tip: Use <code>{'{{first_name}}'}</code> to insert the recipient's name.</p>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">HTML Content</label>
-                                <textarea
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm"
-                                    rows={8}
-                                    placeholder="<div>Hello {{first_name}},</div><br><p>Write your content here...</p>"
-                                    value={templateForm.content_html}
-                                    onChange={e => setTemplateForm({ ...templateForm, content_html: e.target.value })}
-                                />
+                                <label className="form-label">HTML Content</label>
+                                {editingTemplate?.is_system ? (
+                                    <div className="form-input" style={{ background: "#f9fafb", maxHeight: "300px", overflowY: "auto", color: "#6b7280" }} dangerouslySetInnerHTML={{ __html: templateForm.content_html }} />
+                                ) : (
+                                    <div style={{ height: "250px", marginBottom: "3rem" }}>
+                                        <ReactQuill
+                                            theme="snow"
+                                            value={templateForm.content_html}
+                                            onChange={(content) => setTemplateForm({ ...templateForm, content_html: content })}
+                                            style={{ height: "100%" }}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </div>
 
-                        <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-xl flex justify-end gap-3">
+                        <div className="modal-footer">
                             <button
                                 onClick={() => setShowTemplateModal(false)}
-                                className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg font-medium transition"
+                                style={{ background: "none", border: "none", cursor: "pointer", fontWeight: 500 }}
                             >
-                                Cancel
+                                {editingTemplate?.is_system ? 'Close' : 'Cancel'}
                             </button>
-                            <button
-                                onClick={handleSaveTemplate}
-                                disabled={!templateForm.name || !templateForm.subject_template || !templateForm.content_html}
-                                className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Save Template
-                            </button>
+                            {!editingTemplate?.is_system && (
+                                <button
+                                    onClick={handleSaveTemplate}
+                                    disabled={!templateForm.name || !templateForm.subject_template || !templateForm.content_html}
+                                    className="btn btn-primary"
+                                >
+                                    Save Template
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 };
 

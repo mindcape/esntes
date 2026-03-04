@@ -16,6 +16,8 @@ class TemplateCreate(BaseModel):
     name: str
     subject_template: str
     content_html: str
+    category: Optional[str] = "General"
+    is_system: Optional[bool] = False
 
 class TemplateRead(TemplateCreate):
     id: int
@@ -27,6 +29,7 @@ class CampaignCreate(BaseModel):
     title: str
     template_id: int
     audience_filter: dict
+    attachments: Optional[list] = []
     scheduled_at: Optional[datetime] = None
 
 class CampaignRead(CampaignCreate):
@@ -56,6 +59,52 @@ def create_template(
     db.refresh(db_template)
     return db_template
 
+@router.put("/templates/{template_id}", response_model=TemplateRead)
+def update_template(
+    template_id: int,
+    template_update: TemplateCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    template = db.query(MessageTemplate).filter(
+        MessageTemplate.id == template_id,
+        MessageTemplate.community_id == current_user.community_id
+    ).first()
+    
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    if template.is_system:
+        raise HTTPException(status_code=400, detail="Cannot edit system templates")
+        
+    template.name = template_update.name
+    template.subject_template = template_update.subject_template
+    template.content_html = template_update.content_html
+    if template_update.category is not None:
+        template.category = template_update.category
+    
+    db.commit()
+    db.refresh(template)
+    return template
+
+@router.delete("/templates/{template_id}")
+def delete_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    template = db.query(MessageTemplate).filter(
+        MessageTemplate.id == template_id,
+        MessageTemplate.community_id == current_user.community_id
+    ).first()
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    if template.is_system:
+        raise HTTPException(status_code=400, detail="Cannot delete system templates")
+        
+    db.delete(template)
+    db.commit()
+    return {"message": "Template deleted"}
+
 @router.get("/templates", response_model=List[TemplateRead])
 def list_templates(
     db: Session = Depends(get_db),
@@ -78,6 +127,7 @@ def create_campaign(
         title=campaign.title,
         template_id=campaign.template_id,
         audience_filter=campaign.audience_filter,
+        attachments=campaign.attachments,
         scheduled_at=campaign.scheduled_at or datetime.utcnow(),
         community_id=current_user.community_id, # type: ignore
         user_id=current_user.id

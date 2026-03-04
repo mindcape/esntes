@@ -24,6 +24,8 @@ class MessageTemplate(Base):
     name = Column(String, index=True)
     subject_template = Column(String)
     content_html = Column(Text)
+    category = Column(String, default="General")
+    is_system = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -44,6 +46,7 @@ class Campaign(Base):
     sent_at = Column(DateTime, nullable=True)
     
     audience_filter = Column(JSON) # e.g. {"role": "resident", "is_delinquent": true}
+    attachments = Column(JSON, nullable=True) # list of S3 URLs
     
     template_id = Column(Integer, ForeignKey("message_templates.id"))
     template = relationship("MessageTemplate", back_populates="campaigns")
@@ -67,6 +70,7 @@ class EmailQueue(Base):
     
     subject = Column(String)
     body = Column(Text)
+    attachments = Column(JSON, nullable=True) # list of S3 URLs
     
     status = Column(String, default=EmailStatus.PENDING)
     attempts = Column(Integer, default=0)

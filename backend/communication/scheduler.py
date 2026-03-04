@@ -61,10 +61,19 @@ def process_email_queue():
         logger.info(f"Processing {len(emails)} emails from queue...")
         
         for email in emails:
-            # 2. Send
-            success = send_email_smtp(email.recipient_email, email.subject, email.body)
+            # 2. Add Attachments
+            final_body = email.body
+            if email.attachments:
+                attachments_html = "<br><br><hr><p><strong>Attachments:</strong></p><ul>"
+                for att in email.attachments:
+                     attachments_html += f"<li><a href='{att}'>{att.split('/')[-1]}</a></li>"
+                attachments_html += "</ul>"
+                final_body += attachments_html
+
+            # 3. Send
+            success = send_email_smtp(email.recipient_email, email.subject, final_body)
             
-            # 3. Update
+            # 4. Update
             if success:
                 email.status = EmailStatus.SENT
                 if email.campaign_id:
